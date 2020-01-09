@@ -31,80 +31,81 @@
   they are expected to take (in microseconds)
  */
 const AP_Scheduler::Task Plane::scheduler_tasks[] = {
-                           // Units:   Hz      us
-    SCHED_TASK(ahrs_update,           400,    400),
-    SCHED_TASK(read_radio,             50,    100),
-    SCHED_TASK(check_short_failsafe,   50,    100),
-    SCHED_TASK(update_speed_height,    50,    200),
-    SCHED_TASK(update_control_mode,   400,    100),
-    SCHED_TASK(stabilize,             400,    100),
-    SCHED_TASK(set_servos,            400,    100),
-    SCHED_TASK(update_throttle_hover, 100,     90),
-    SCHED_TASK(read_control_switch,     7,    100),
-    SCHED_TASK(update_GPS_50Hz,        50,    300),
-    SCHED_TASK(update_GPS_10Hz,        10,    400),
-    SCHED_TASK(navigate,               10,    150),
-    SCHED_TASK(update_compass,         10,    200),
-    SCHED_TASK(read_airspeed,          10,    100),
-    SCHED_TASK(update_alt,             10,    200),
-    SCHED_TASK(adjust_altitude_target, 10,    200),
+    //类名Plane 指针&plane 调用函数    频率    最长时间
+    // Units:                          Hz      us
+    SCHED_TASK(ahrs_update,           400,    400), //姿态解算
+    SCHED_TASK(read_radio,             50,    100), //信号读取
+    SCHED_TASK(check_short_failsafe,   50,    100), //短故障检查
+    SCHED_TASK(update_speed_height,    50,    200), //更新速度高度
+    SCHED_TASK(update_control_mode,   400,    100), //更新控制模式
+    SCHED_TASK(stabilize,             400,    100), //稳定
+    SCHED_TASK(set_servos,            400,    100), //电机设置
+    SCHED_TASK(update_throttle_hover, 100,     90), //更新油门 悬停
+    SCHED_TASK(read_control_switch,     7,    100), //读取控制切换
+    SCHED_TASK(update_GPS_50Hz,        50,    300), //GPS信号50hz
+    SCHED_TASK(update_GPS_10Hz,        10,    400), //GPS信号10hz
+    SCHED_TASK(navigate,               10,    150), //导航
+    SCHED_TASK(update_compass,         10,    200), //更新罗盘
+    SCHED_TASK(read_airspeed,          10,    100), //读取空速
+    SCHED_TASK(update_alt,             10,    200), //更新高度
+    SCHED_TASK(adjust_altitude_target, 10,    200), //调整高度目标
 #if ADVANCED_FAILSAFE == ENABLED
-    SCHED_TASK(afs_fs_check,           10,    100),
+    SCHED_TASK(afs_fs_check,           10,    100), //高级故障检测
 #endif
-    SCHED_TASK_CLASS(GCS,            (GCS*)&plane._gcs,       update_receive,   300,  500),
-    SCHED_TASK_CLASS(GCS,            (GCS*)&plane._gcs,       update_send,      300,  500),
-    SCHED_TASK_CLASS(AP_ServoRelayEvents, &plane.ServoRelayEvents, update_events,          50,  150),
-    SCHED_TASK_CLASS(AP_BattMonitor, &plane.battery, read, 10, 300),
-    SCHED_TASK_CLASS(AP_Baro, &plane.barometer, accumulate, 50, 150),
-    SCHED_TASK_CLASS(AP_Notify,      &plane.notify,  update, 50, 300),
-    SCHED_TASK(read_rangefinder,       50,    100),
-    SCHED_TASK_CLASS(AP_ICEngine, &plane.g2.ice_control, update, 10, 100),
-    SCHED_TASK_CLASS(Compass,          &plane.compass,              cal_update, 50, 50),
-    SCHED_TASK(accel_cal_update,       10,    50),
+    SCHED_TASK_CLASS(GCS,            (GCS*)&plane._gcs,       update_receive,   300,  500), //更新接收
+    SCHED_TASK_CLASS(GCS,            (GCS*)&plane._gcs,       update_send,      300,  500), //更新发送
+    SCHED_TASK_CLASS(AP_ServoRelayEvents, &plane.ServoRelayEvents, update_events,          50,  150), //
+    SCHED_TASK_CLASS(AP_BattMonitor, &plane.battery, read, 10, 300),                        //电源检测
+    SCHED_TASK_CLASS(AP_Baro, &plane.barometer, accumulate, 50, 150),                       //气压计
+    SCHED_TASK_CLASS(AP_Notify,      &plane.notify,  update, 50, 300),                      //
+    SCHED_TASK(read_rangefinder,       50,    100),                                         //测距仪
+    SCHED_TASK_CLASS(AP_ICEngine, &plane.g2.ice_control, update, 10, 100),                  //内燃机控制
+    SCHED_TASK_CLASS(Compass,          &plane.compass,              cal_update, 50, 50),    //罗盘校准更新
+    SCHED_TASK(accel_cal_update,       10,    50),                                          //加速度计校准更新
 #if OPTFLOW == ENABLED
-    SCHED_TASK_CLASS(OpticalFlow, &plane.optflow, update,    50,    50),
+    SCHED_TASK_CLASS(OpticalFlow, &plane.optflow, update,    50,    50),                    //光流更新
 #endif
-    SCHED_TASK(one_second_loop,         1,    400),
-    SCHED_TASK(check_long_failsafe,     3,    400),
-    SCHED_TASK(rpm_update,             10,    100),
-    SCHED_TASK(airspeed_ratio_update,   1,    100),
+    SCHED_TASK(one_second_loop,         1,    400),      //一秒更新一次
+    SCHED_TASK(check_long_failsafe,     3,    400),      //长故障检查
+    SCHED_TASK(rpm_update,             10,    100),      //rpm更新
+    SCHED_TASK(airspeed_ratio_update,   1,    100),      //每秒更新空速校准率
 #if MOUNT == ENABLED
-    SCHED_TASK_CLASS(AP_Mount, &plane.camera_mount, update, 50, 100),
+    SCHED_TASK_CLASS(AP_Mount, &plane.camera_mount, update, 50, 100), //更新相机座电机
 #endif // MOUNT == ENABLED
 #if CAMERA == ENABLED
-    SCHED_TASK_CLASS(AP_Camera, &plane.camera, update_trigger, 50, 100),
+    SCHED_TASK_CLASS(AP_Camera, &plane.camera, update_trigger, 50, 100), //更新相机快门
 #endif // CAMERA == ENABLED
-    SCHED_TASK_CLASS(AP_Scheduler, &plane.scheduler, update_logging,         0.2,    100),
+    SCHED_TASK_CLASS(AP_Scheduler, &plane.scheduler, update_logging,         0.2,    100),//更新scheduler能更新的日志
     SCHED_TASK(compass_save,          0.1,    200),
-    SCHED_TASK(Log_Write_Fast,         25,    300),
-    SCHED_TASK(update_logging1,        25,    300),
-    SCHED_TASK(update_logging2,        25,    300),
+    SCHED_TASK(Log_Write_Fast,         25,    300),                             //日志快速写入
+    SCHED_TASK(update_logging1,        25,    300),                             //写入日志 姿态
+    SCHED_TASK(update_logging2,        25,    300),                             //日志 控制调参 航向调整 rc 振动
 #if SOARING_ENABLED == ENABLED
-    SCHED_TASK(update_soaring,         50,    400),
+    SCHED_TASK(update_soaring,         50,    400),                             //Audu飞翔
 #endif
-    SCHED_TASK(parachute_check,        10,    200),
+    SCHED_TASK(parachute_check,        10,    200),                             //调用降落伞更新
 #if AP_TERRAIN_AVAILABLE
     SCHED_TASK_CLASS(AP_Terrain, &plane.terrain, update, 10, 200),
 #endif // AP_TERRAIN_AVAILABLE
-    SCHED_TASK(update_is_flying_5Hz,    5,    100),
+    SCHED_TASK(update_is_flying_5Hz,    5,    100),                              //判断是否飞翔
 #if LOGGING_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Logger, &plane.logger, periodic_tasks, 50, 400),
 #endif
-    SCHED_TASK_CLASS(AP_InertialSensor, &plane.ins, periodic, 50, 50),
-    SCHED_TASK(avoidance_adsb_update,  10,    100),
-    SCHED_TASK_CLASS(RC_Channels,       (RC_Channels*)&plane.g2.rc_channels, read_aux_all,           10,    200),
-    SCHED_TASK_CLASS(AP_Button, &plane.button, update, 5, 100),
+    SCHED_TASK_CLASS(AP_InertialSensor, &plane.ins, periodic, 50, 50),            //惯性传感器周期运行
+    SCHED_TASK(avoidance_adsb_update,  10,    100),                                     //防撞模块更新
+    SCHED_TASK_CLASS(RC_Channels,       (RC_Channels*)&plane.g2.rc_channels, read_aux_all,           10,    200), //拨杆开关读取
+    SCHED_TASK_CLASS(AP_Button, &plane.button, update, 5, 100),                            //按键更新
 #if STATS_ENABLED == ENABLED
-    SCHED_TASK_CLASS(AP_Stats, &plane.g2.stats, update, 1, 100),
+    SCHED_TASK_CLASS(AP_Stats, &plane.g2.stats, update, 1, 100),                   //变量状态更新（永久保存）
 #endif
 #if GRIPPER_ENABLED == ENABLED
-    SCHED_TASK_CLASS(AP_Gripper, &plane.g2.gripper, update, 10, 75),
+    SCHED_TASK_CLASS(AP_Gripper, &plane.g2.gripper, update, 10, 75),               //抓手更新
 #endif
 #if OSD_ENABLED == ENABLED
     SCHED_TASK(publish_osd_info, 1, 10),
 #endif
 #if LANDING_GEAR_ENABLED == ENABLED
-    SCHED_TASK(landing_gear_update, 5, 50),
+    SCHED_TASK(landing_gear_update, 5, 50),                                         //起落架更新
 #endif
 #if EFI_ENABLED
     SCHED_TASK(efi_update,             10,    200),
@@ -144,31 +145,37 @@ void Plane::ahrs_update()
         gcs().update_receive();
     }
 #endif
-
+    //更新ahrs
     ahrs.update();
 
+    //写入imu信息
     if (should_log(MASK_LOG_IMU)) {
         logger.Write_IMU();
     }
 
+    //滚转角限制、俯仰角限制
     // calculate a scaled roll limit based on current pitch
     roll_limit_cd = aparm.roll_limit_cd;
     pitch_limit_min_cd = aparm.pitch_limit_min_cd;
 
+    //若尾座式未激活，则交换俯仰滚转的比例限幅
     if (!quadplane.tailsitter_active()) {
         roll_limit_cd *= ahrs.cos_pitch();
         pitch_limit_min_cd *= fabsf(ahrs.cos_roll());
     }
 
+    //更新用于地面航向和自动起飞的陀螺仪数据，陀螺仪数据点乘DCM得到地系下航向角速度
     // updated the summed gyro used for ground steering and
     // auto-takeoff. Dot product of DCM.c with gyro vector gives earth
     // frame yaw rate
-    steer_state.locked_course_err += ahrs.get_yaw_rate_earth() * G_Dt;
-    steer_state.locked_course_err = wrap_PI(steer_state.locked_course_err);
+    steer_state.locked_course_err += ahrs.get_yaw_rate_earth() * G_Dt;//角度误差
+    steer_state.locked_course_err = wrap_PI(steer_state.locked_course_err);//(-π,π)之内
 
+    //检查是否已从EKF进行偏航复位
     // check if we have had a yaw reset from the EKF
     quadplane.check_yaw_reset();
 
+    //更新惯导
     // update inertial_nav for quadplane
     quadplane.inertial_nav.update();
 }
@@ -224,16 +231,16 @@ void Plane::update_logging1(void)
 void Plane::update_logging2(void)
 {
     if (should_log(MASK_LOG_CTUN))
-        Log_Write_Control_Tuning();
+        Log_Write_Control_Tuning();//调参日志
     
     if (should_log(MASK_LOG_NTUN))
-        Log_Write_Nav_Tuning();
+        Log_Write_Nav_Tuning();//导航调整日志
 
     if (should_log(MASK_LOG_RC))
-        Log_Write_RC();
+        Log_Write_RC();//遥控器日志
 
     if (should_log(MASK_LOG_IMU))
-        logger.Write_Vibration();
+        logger.Write_Vibration();//振动日志
 }
 
 

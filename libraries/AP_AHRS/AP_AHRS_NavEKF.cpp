@@ -95,21 +95,25 @@ void AP_AHRS_NavEKF::update(bool skip_ins_update)
     // support locked access functions to AHRS data
     WITH_SEMAPHORE(_rsem);
     
+    //返回普通优先级，在被 inertial senor 使用delay_microseconds_boost()加强后
     // drop back to normal priority if we were boosted by the INS
     // calling delay_microseconds_boost()
     hal.scheduler->boost_end();
     
+    //强制选择EKF2
     // EKF1 is no longer supported - handle case where it is selected
     if (_ekf_type == 1) {
         _ekf_type.set(2);
     }
 
-    update_DCM(skip_ins_update);
+    //更新DCM
+    update_DCM(skip_ins_update);//默认为false
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     update_SITL();
 #endif
 
+    //ekf2和ekf3的运行顺序
     if (_ekf_type == 2) {
         // if EK2 is primary then run EKF2 first to give it CPU
         // priority
@@ -132,12 +136,14 @@ void AP_AHRS_NavEKF::update(bool skip_ins_update)
         hal.opticalflow->push_gyro_bias(exported_gyro_bias.x, exported_gyro_bias.y);
     }
 
+    //存在视角，则用该视角观察的姿态替换
     if (_view != nullptr) {
         // update optional alternative attitude view
         _view->update(skip_ins_update);
     }
 
 #if !HAL_MINIMIZE_FEATURES && AP_AHRS_NAVEKF_AVAILABLE
+    //nmea是GPS的协议，更新GPS
     // update NMEA output
     update_nmea_out();
 #endif
