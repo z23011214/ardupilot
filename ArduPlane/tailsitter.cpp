@@ -216,8 +216,8 @@ bool QuadPlane::tailsitter_transition_vtol_complete(void) const
 // handle different tailsitter input types
 void QuadPlane::tailsitter_check_input(void)
 {
-    if (tailsitter_active() &&
-        (tailsitter.input_type & TAILSITTER_INPUT_PLANE)) {
+    if (tailsitter_active() &&//尾座式激活
+        (tailsitter.input_type & TAILSITTER_INPUT_PLANE)) {//进入固定翼模式
         // the user has asked for body frame controls when tailsitter
         // is active. We switch around the control_in value for the
         // channels to do this, as that ensures the value is

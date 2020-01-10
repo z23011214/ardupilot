@@ -137,6 +137,7 @@ void Plane::loop()
 // update AHRS system
 void Plane::ahrs_update()
 {
+    //解锁相关
     arming.update_soft_armed();
 
 #if HIL_SUPPORT

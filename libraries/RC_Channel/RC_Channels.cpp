@@ -68,12 +68,13 @@ uint8_t RC_Channels::get_radio_in(uint16_t *chans, const uint8_t num_channels)
 // update all the input channels
 bool RC_Channels::read_input(void)
 {
+    //没有新的输入或数据没有新的改写，返回false
     if (!hal.rcin->new_input() && !has_new_overrides) {
         return false;
     }
 
     has_new_overrides = false;
-
+    //有通道更新，返回true
     bool success = false;
     for (uint8_t i=0; i<NUM_RC_CHANNELS; i++) {
         success |= channel(i)->update();

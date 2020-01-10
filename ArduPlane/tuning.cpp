@@ -297,7 +297,7 @@ float AP_Tuning_Plane::controller_error(uint8_t parm)
     // tuning a quadplane and end up with D dominating
     const float max_P_D_ratio = 3.0f;
 
-    if (plane.quadplane.motors->get_throttle() < 0.1f) {
+    if (plane.quadplane.motors->get_throttle() < 0.1f) {//vtol小于0.1时不会报错
         // don't report stale errors if not running VTOL motors
         return 0;
     }

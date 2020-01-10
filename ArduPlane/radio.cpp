@@ -114,12 +114,14 @@ void Plane::rudder_arm_disarm_check()
 {
     AP_Arming::RudderArming arming_rudder = arming.get_rudder_arming_type();
 
+    //未启用舵解锁，则直接返回
     if (arming_rudder == AP_Arming::RudderArming::IS_DISABLED) {
         //parameter disallows rudder arming/disabling
         return;
     }
 
     // if throttle is not down, then pilot cannot rudder arm/disarm
+    //有油门时，无法解锁
     if (get_throttle_input() != 0){
         rudder_arm_timer = 0;
         return;
@@ -127,48 +129,52 @@ void Plane::rudder_arm_disarm_check()
 
     // if not in a manual throttle mode and not in CRUISE or FBWB
     // modes then disallow rudder arming/disarming
+    //若不在手动油门模式，且不在cruise模式或FBWB模式，则禁用舵解锁
     if (auto_throttle_mode &&
         (control_mode != &mode_cruise && control_mode != &mode_fbwb)) {
         rudder_arm_timer = 0;
         return;      
     }
 
-	if (!arming.is_armed()) {
+	if (!arming.is_armed()) {//未解锁时
 		// when not armed, full right rudder starts arming counter
-		if (channel_rudder->get_control_in() > 4000) {
+        //未解锁时，右满舵能解锁
+		if (channel_rudder->get_control_in() > 4000) {//舵值大于4000时，开始计时
 			uint32_t now = millis();
 
+            
 			if (rudder_arm_timer == 0 ||
 				now - rudder_arm_timer < 3000) {
-
+                //初始化计时时刻
 				if (rudder_arm_timer == 0) {
                     rudder_arm_timer = now;
                 }
-			} else {
+			} else {//时间大于3000ms（3s），解锁
 				//time to arm!
 				arming.arm(AP_Arming::Method::RUDDER);
 				rudder_arm_timer = 0;
 			}
-		} else {
+		} else {//不是右满舵，则取消计时
 			// not at full right rudder
 			rudder_arm_timer = 0;
 		}
-	} else if ((arming_rudder == AP_Arming::RudderArming::ARMDISARM) && !is_flying()) {
+	} else if ((arming_rudder == AP_Arming::RudderArming::ARMDISARM) && !is_flying()) {//舵能够上锁，且不在飞行时
 		// when armed and not flying, full left rudder starts disarming counter
+        //左满舵能够上锁
 		if (channel_rudder->get_control_in() < -4000) {
 			uint32_t now = millis();
 
-			if (rudder_arm_timer == 0 ||
+			if (rudder_arm_timer == 0 ||//初始化计时判断
 				now - rudder_arm_timer < 3000) {
 				if (rudder_arm_timer == 0) {
                     rudder_arm_timer = now;
                 }
-			} else {
+			} else {//时间大于3000ms（3s），上锁
 				//time to disarm!
 				arming.disarm();
 				rudder_arm_timer = 0;
 			}
-		} else {
+		} else {//不是左满舵，则取消计时
 			// not at full left rudder
 			rudder_arm_timer = 0;
 		}
@@ -177,21 +183,24 @@ void Plane::rudder_arm_disarm_check()
 
 void Plane::read_radio()
 {
+    //没有输入，将各通道输入量设为平衡值，将控制输入量设为0
     if (!rc().read_input()) {
         control_failsafe();
         return;
     }
 
+    //未进入故障保护模式时，标记最后的时间
     if (!failsafe.rc_failsafe)
     {
         failsafe.AFS_last_valid_rc_ms = millis();
     }
 
+    //标记油门正常的最后时间，通过该时间判断是否进入故障安全模式
     if (rc_throttle_value_ok()) {
         failsafe.last_valid_rc_ms = millis();
     }
 
-    if (control_mode == &mode_training) {
+    if (control_mode == &mode_training) {//在训练模式下，各通道无死区
         // in training mode we don't want to use a deadzone, as we
         // want manual pass through when not exceeding attitude limits
         channel_roll->recompute_pwm_no_deadzone();
@@ -200,26 +209,31 @@ void Plane::read_radio()
         channel_rudder->recompute_pwm_no_deadzone();
     }
 
-    control_failsafe();
-
+    control_failsafe();//在来一次故障安全检测
+    //油门微动 且 油门控制输入大于50 且 是否允许杆量混合操纵
     if (g.throttle_nudge && channel_throttle->get_control_in() > 50 && geofence_stickmixing()) {
         float nudge = (channel_throttle->get_control_in() - 50) * 0.02f;
-        if (ahrs.airspeed_sensor_enabled()) {
-            airspeed_nudge_cm = (aparm.airspeed_max * 100 - aparm.airspeed_cruise_cm) * nudge;
+        if (ahrs.airspeed_sensor_enabled()) {//空速传感器已使用
+            airspeed_nudge_cm = (aparm.airspeed_max * 100 - aparm.airspeed_cruise_cm) * nudge;//则，空速应按比例增加至油门杆的位置
         } else {
-            throttle_nudge = (aparm.throttle_max - aparm.throttle_cruise) * nudge;
+            throttle_nudge = (aparm.throttle_max - aparm.throttle_cruise) * nudge;//油门按比例算出响应值
         }
-    } else {
+    } else {//否则，两个都是0
         airspeed_nudge_cm = 0;
         throttle_nudge = 0;
     }
 
+    //舵解锁及上锁判断
     rudder_arm_disarm_check();
 
     // potentially swap inputs for tailsitters
+    //尾座式布局时，倾转过去后，进入固定翼模式，交换偏航和滚转的操作通道
     quadplane.tailsitter_check_input();
 
     // check for transmitter tuning changes
+    //各飞行模式下的参数调整
+    //注意，其中有几个函数被重写
+    //有些问题，RC_Channel调PID参数？
     tuning.check_input(control_mode->mode_number());
 }
 
@@ -247,7 +261,7 @@ int16_t Plane::rudder_input(void)
 
 void Plane::control_failsafe()
 {
-    if (millis() - failsafe.last_valid_rc_ms > 1000 || rc_failsafe_active()) {
+    if (millis() - failsafe.last_valid_rc_ms > 1000 || rc_failsafe_active()) {//前一个判断没有必要吧，包含于后一个
         // we do not have valid RC input. Set all primary channel
         // control inputs to the trim value and throttle to min
         channel_roll->set_radio_in(channel_roll->get_radio_trim());
@@ -280,32 +294,37 @@ void Plane::control_failsafe()
         }
     }
 
+    //油门故障保护未开则直接返回
     if(g.throttle_fs_enabled == 0) {
         return;
     }
 
-    if (rc_failsafe_active()) {
+    
+    if (rc_failsafe_active()) { 
+
         // we detect a failsafe from radio
         // throttle has dropped below the mark
-        failsafe.throttle_counter++;
-        if (failsafe.throttle_counter == 10) {
-            gcs().send_text(MAV_SEVERITY_WARNING, "Throttle failsafe on");
-            failsafe.rc_failsafe = true;
-            AP_Notify::flags.failsafe_radio = true;
+        failsafe.throttle_counter++;//故障保护.油门计数++
+        if (failsafe.throttle_counter == 10) {//油门计数达到10
+            gcs().send_text(MAV_SEVERITY_WARNING, "Throttle failsafe on");//向地面站发送信息，油门故障保护打开
+            failsafe.rc_failsafe = true;//rc安全保护打开
+            AP_Notify::flags.failsafe_radio = true;//指示信息将rc故障保护设为true，可能是指示灯的
         }
-        if (failsafe.throttle_counter > 10) {
+        if (failsafe.throttle_counter > 10) {//限值
             failsafe.throttle_counter = 10;
         }
-    } else if(failsafe.throttle_counter > 0) {
+    } else if(failsafe.throttle_counter > 0) {//若此前有值则继续，若一直正常（=0）则返回
+
         // we are no longer in failsafe condition
         // but we need to recover quickly
+        //迅速恢复，不直接恢复，有3次缓冲时间
         failsafe.throttle_counter--;
         if (failsafe.throttle_counter > 3) {
             failsafe.throttle_counter = 3;
         }
-        if (failsafe.throttle_counter == 1) {
+        if (failsafe.throttle_counter == 1) {//向地面站发送信息，油门故障保护关闭
             gcs().send_text(MAV_SEVERITY_WARNING, "Throttle failsafe off");
-        } else if(failsafe.throttle_counter == 0) {
+        } else if(failsafe.throttle_counter == 0) {//=0时，真正关闭油门故障保护，相应flag设为false
             failsafe.rc_failsafe = false;
             AP_Notify::flags.failsafe_radio = false;
         }
@@ -385,6 +404,7 @@ bool Plane::rc_throttle_value_ok(void) const
 /*
   return true if throttle level is below throttle failsafe threshold
   or RC input is invalid
+  油门值没在正常范围内或1s内未收到遥控信号，则返回true
  */
 bool Plane::rc_failsafe_active(void) const
 {

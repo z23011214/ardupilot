@@ -1109,13 +1109,15 @@ void AP_Param::save(bool force_save)
     struct param_save p;
     p.param = this;
     p.force_save = force_save;
-    while (!save_queue.push(p)) {
+    while (!save_queue.push(p)) {//放入保存队列
         // if we can't save to the queue
+        //解锁时，不等待，但会使参数失败
         if (hal.util->get_soft_armed()) {
             // if we are armed then don't sleep, instead we lose the
             // parameter save
             return;
         }
+        //未解锁时，循环等待ROM可写
         // when we are disarmed then loop waiting for a slot to become
         // available. This guarantees completion for large parameter
         // set loads

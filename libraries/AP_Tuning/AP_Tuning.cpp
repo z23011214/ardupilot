@@ -62,26 +62,27 @@ const AP_Param::GroupInfo AP_Tuning::var_info[] = {
 */
 void AP_Tuning::check_selector_switch(void)
 {
-    if (selector == 0) {
+    if (selector == 0) {//未启用，返回
         // no selector switch enabled
         return;
     }
+    //没有正确输入，返回，取消计时
     if (!rc().has_valid_input()) {
         selector_start_ms = 0;
         return;
     }
-    RC_Channel *selchan = rc().channel(selector-1);
-    if (selchan == nullptr) {
+    RC_Channel *selchan = rc().channel(selector-1);//获取对应通道，selector0为禁用，因此从1开始表示通道，要-1
+    if (selchan == nullptr) {//若不存在该通道，为空
         return;
     }
-    uint16_t selector_in = selchan->get_radio_in();
-    if (selector_in >= 1700) {
+    uint16_t selector_in = selchan->get_radio_in();//获取该通道输入pwm
+    if (selector_in >= 1700) {//为高时
         // high selector
-        if (selector_start_ms == 0) {
+        if (selector_start_ms == 0) {//若未开始，则初始化计时
             selector_start_ms = AP_HAL::millis();
         }
-        uint32_t hold_time = AP_HAL::millis() - selector_start_ms;
-        if (hold_time > 5000 && changed) {
+        uint32_t hold_time = AP_HAL::millis() - selector_start_ms;//持续时间
+        if (hold_time > 5000 && changed) {//大于5s，则记录参数
             // save tune
             save_parameters();
             re_center();
@@ -132,16 +133,18 @@ void AP_Tuning::check_input(uint8_t flightmode)
     }
 
     // check for revert on changed flightmode
-    if (flightmode != last_flightmode) {
-        if (need_revert != 0 && mode_revert != 0) {
-            gcs().send_text(MAV_SEVERITY_INFO, "Tuning: reverted");
-            revert_parameters();
-            re_center();
+    //检查改变飞行模式时是否需要重置某些参数
+    if (flightmode != last_flightmode) {//飞行模式改变了
+        if (need_revert != 0 && mode_revert != 0) {//各需要恢复的标志位有不为0，且打开了恢复模式
+            gcs().send_text(MAV_SEVERITY_INFO, "Tuning: reverted");//参数重置
+            revert_parameters();//恢复参数
+            re_center();//重置center位置
         }
         last_flightmode = flightmode;
     }
     
     // only adjust values at 10Hz
+    //10Hz的检查频率
     uint32_t now = AP_HAL::millis();
     uint32_t dt_ms = now - last_check_ms;
     if (dt_ms < 100) {
@@ -151,6 +154,7 @@ void AP_Tuning::check_input(uint8_t flightmode)
 
     if (channel > RC_Channels::get_valid_channel_count()) {
         // not valid channel
+        //大于有效通道数，无效，返回
         return;
     }
 
@@ -159,49 +163,58 @@ void AP_Tuning::check_input(uint8_t flightmode)
         range.set(1.1f);
     }
 
-    if (current_parm == 0) {
+    if (current_parm == 0) {//为0时，直接跳转下一个
         next_parameter();
     }
 
     // cope with user changing parmset while tuning
+    //貌似没啥用？除了定义只有这里赋了个值
     if (current_set != parmset) {
         re_center();
     }
     current_set = parmset;
     
+    //selector设置，5s高电平保存参数，然后跳转下一个参数
     check_selector_switch();
 
-    if (selector_start_ms) {
+    if (selector_start_ms) {//若check_selector在计时中，直接跳过，等待计时
         // no tuning while selector high
         return;
     }
 
-    if (current_parm == 0) {
+    if (current_parm == 0) {//此时还等于0？说明一个tuning_sets中的参数组刚设置完一圈？
         return;
     }
     
-    RC_Channel *chan = rc().channel(channel-1);
-    if (chan == nullptr) {
+    RC_Channel *chan = rc().channel(channel-1);//获取当前channel的指针，channel应该跟paraset一样，由参数表得来
+    if (chan == nullptr) {//指针为空，则返回
         return;
     }
+    //线性插值，根据chan->get_radio_in()在channel_min和channel_max间的位置，确定输出-1到1中的值
+    //即将该通道输入值单位化至[-1,1]区间内
     float chan_value = linear_interpolate(-1, 1, chan->get_radio_in(), channel_min, channel_max);
-    if (dt_ms > 500) {
+    if (dt_ms > 500) {//隔500ms更新一次，之前不是100ms会刷新一次吗，怎么会到500ms？
+    //除非有过RC信号中断，未进入该函数，使得last_check_ms与now之间间隔较大
+    //所以这是信号重新连上的重置？但这不是只能重置当前通道的吗？别的通道不用？
         last_channel_value = chan_value;
     }
 
+    //检查控制器误差
     // check for controller error
     check_controller_error();
     
+    //若两次变化在0.01以内，则忽略变化
     if (fabsf(chan_value - last_channel_value) < 0.01) {
         // ignore changes of less than 1%
         return;
     }
-
+    //这句是显示两次通道的值，但被注释了
     //hal.console->printf("chan_value %.2f last_channel_value %.2f\n", chan_value, last_channel_value);
 
-    if (mid_point_wait) {
+    if (mid_point_wait) {//若之前有过recenter,则该值被设为true
         // see if we have crossed the mid-point. We use a small deadzone to make it easier
         // to move to the "indent" portion of a slider to start tuning
+        //死区内，仍等待
         const float dead_zone = 0.02;
         if ((chan_value > dead_zone && last_channel_value > 0) ||
             (chan_value < -dead_zone && last_channel_value < 0)) {
@@ -211,10 +224,11 @@ void AP_Tuning::check_input(uint8_t flightmode)
         // starting tuning
         mid_point_wait = false;
         gcs().send_text(MAV_SEVERITY_INFO, "Tuning: mid-point %s", get_tuning_name(current_parm));
-        AP_Notify::events.tune_started = 1;
+        AP_Notify::events.tune_started = 1;//指示灯？开始调试
     }
-    last_channel_value = chan_value;
+    last_channel_value = chan_value;//记录上一次的值
 
+    //这个范围是个什么算法呀，[center_value/range,center_value]  [center_value,center_value*range]这个范围再插值？
     float new_value;
     if (chan_value > 0) {
         new_value = linear_interpolate(center_value, range*center_value, chan_value, 0, 1);
@@ -243,6 +257,7 @@ void AP_Tuning::Log_Write_Parameter_Tuning(float value)
 
 /*
   save parameters in the set
+  保存参数
  */
 void AP_Tuning::save_parameters(void)
 {
@@ -269,13 +284,13 @@ void AP_Tuning::save_parameters(void)
  */
 void AP_Tuning::revert_parameters(void)
 {
-    uint8_t set = (uint8_t)parmset.get();
+    uint8_t set = (uint8_t)parmset.get();//该值表示恢复参数的序号，小于50为quadplane，50-100为固定翼，100以上表示一组参数
     if (set < set_base) {
         // single parameter tuning
         reload_value(set);
         return;
     }
-    for (uint8_t i=0; tuning_sets[i].num_parms != 0; i++) {
+    for (uint8_t i=0; tuning_sets[i].num_parms != 0; i++) {//tuning_sets定义在tuning.cpp内为各组参数中的内容
         if (tuning_sets[i].set+set_base == set) {
             for (uint8_t p=0; p<tuning_sets[i].num_parms; p++) {
                 if (p >= 32 || (need_revert & (1U<<p))) {
@@ -301,13 +316,13 @@ void AP_Tuning::next_parameter(void)
         return;
     }
     for (uint8_t i=0; tuning_sets[i].num_parms != 0; i++) {
-        if (tuning_sets[i].set+set_base == set) {
+        if (tuning_sets[i].set+set_base == set) {//可以理解为.set==set-setbase
             if (current_parm == 0) {
                 current_parm_index = 0;
             } else {
                 current_parm_index = (current_parm_index + 1) % tuning_sets[i].num_parms;
             }
-            current_parm = tuning_sets[i].parms[current_parm_index];
+            current_parm = tuning_sets[i].parms[current_parm_index];//当前参数序号赋给current_parm
             re_center();
             gcs().send_text(MAV_SEVERITY_INFO, "Tuning: started %s", get_tuning_name(current_parm));
             AP_Notify::events.tune_next = current_parm_index+1;
@@ -331,10 +346,11 @@ const char *AP_Tuning::get_tuning_name(uint8_t parm)
 
 /*
   check for controller error
+  若该值大于设计的阈值且处于解锁状态，则每隔两秒向地面站报一次错
  */
 void AP_Tuning::check_controller_error(void)
 {
-    float err = controller_error(current_parm);
+    float err = controller_error(current_parm);//control monitor，看过之后再回来看
     if (err > error_threshold) {
         uint32_t now = AP_HAL::millis();
         if (now - last_controller_error_ms > 2000 && hal.util->get_soft_armed()) {
