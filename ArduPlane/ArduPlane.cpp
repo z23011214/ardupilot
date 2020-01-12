@@ -47,7 +47,7 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK(update_compass,         10,    200),
     SCHED_TASK(read_airspeed,          10,    100),
     SCHED_TASK(update_alt,             10,    200),
-    SCHED_TASK(adjust_altitude_target, 10,    200),
+    SCHED_TASK(adjust_altitude_target, 10,    200),//高度调整
 #if ADVANCED_FAILSAFE == ENABLED
     SCHED_TASK(afs_fs_check,           10,    100),
 #endif
@@ -133,7 +133,7 @@ void Plane::loop()
     G_Dt = scheduler.get_loop_period_s();
 }
 
-// update AHRS system
+// update AHRS system AHRS姿态解算
 void Plane::ahrs_update()
 {
     arming.update_soft_armed();
