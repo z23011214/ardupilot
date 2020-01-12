@@ -59,6 +59,8 @@ const AP_Param::GroupInfo AP_Tuning::var_info[] = {
 
 /*
   handle selector switch input
+  2-5s高pwm随后低pwm能re_center
+  5s高pwm能保存参数并重新获取re_center,随后低能执行next_parameter
 */
 void AP_Tuning::check_selector_switch(void)
 {
@@ -82,7 +84,7 @@ void AP_Tuning::check_selector_switch(void)
             selector_start_ms = AP_HAL::millis();
         }
         uint32_t hold_time = AP_HAL::millis() - selector_start_ms;//持续时间
-        if (hold_time > 5000 && changed) {//大于5s，则记录参数
+        if (hold_time > 5000 && changed) {//大于5s，且changed为true，则保存参数
             // save tune
             save_parameters();
             re_center();
@@ -127,13 +129,18 @@ void AP_Tuning::re_center(void)
  */
 void AP_Tuning::check_input(uint8_t flightmode)
 {
+    //parmset 该值小于50为quadplane，50-100为固定翼均为为枚举体tuning_func中的值，100以上表示为tuning_sets里的参数组
+    //current_parm为枚举体tuning_func中的值，表示当前参数parmset(相等关系)，或当前参数组parmset中的序号(不是相等关系了)
+    //current_set为tuning_sets里的参数组，在parmset大于100时，与之相等？感觉没用到
+    //channel负责调节值的大小。select为二位开关，负责re_center或next_parameter。本文件的参数表中，设置对应调参通道及参数切换通道。
+    //parmset参数集在tuning.cpp的参数表中，选择参数组，通过GCS设置？
     if (channel <= 0 || parmset <= 0) {
         // disabled
         return;
     }
 
     // check for revert on changed flightmode
-    //检查改变飞行模式时是否需要重置某些参数
+    //检查改变飞行模式时是否需要重置某些参数的中间值
     if (flightmode != last_flightmode) {//飞行模式改变了
         if (need_revert != 0 && mode_revert != 0) {//各需要恢复的标志位有不为0，且打开了恢复模式
             gcs().send_text(MAV_SEVERITY_INFO, "Tuning: reverted");//参数重置
@@ -224,18 +231,20 @@ void AP_Tuning::check_input(uint8_t flightmode)
         // starting tuning
         mid_point_wait = false;
         gcs().send_text(MAV_SEVERITY_INFO, "Tuning: mid-point %s", get_tuning_name(current_parm));
-        AP_Notify::events.tune_started = 1;//指示灯？开始调试
+        AP_Notify::events.tune_started = 1;//指示灯？开始调参？
     }
     last_channel_value = chan_value;//记录上一次的值
 
-    //这个范围是个什么算法呀，[center_value/range,center_value]  [center_value,center_value*range]这个范围再插值？
+    //这个操作有什么用？在center附近通过channel进行调节？
+    //range表示每次调节的范围？
+    //[center_value/range,center_value]  [center_value,center_value*range]这个范围再插值
     float new_value;
     if (chan_value > 0) {
         new_value = linear_interpolate(center_value, range*center_value, chan_value, 0, 1);
     } else {
         new_value = linear_interpolate(center_value/range, center_value, chan_value, -1, 0);
     }
-    changed = true;
+    changed = true;//selector能执行next_parameter
     need_revert |= (1U << current_parm_index);
     set_value(current_parm, new_value);
     Log_Write_Parameter_Tuning(new_value);
@@ -284,14 +293,14 @@ void AP_Tuning::save_parameters(void)
  */
 void AP_Tuning::revert_parameters(void)
 {
-    uint8_t set = (uint8_t)parmset.get();//该值表示恢复参数的序号，小于50为quadplane，50-100为固定翼，100以上表示一组参数
+    uint8_t set = (uint8_t)parmset.get();
     if (set < set_base) {
         // single parameter tuning
         reload_value(set);
         return;
     }
-    for (uint8_t i=0; tuning_sets[i].num_parms != 0; i++) {//tuning_sets定义在tuning.cpp内为各组参数中的内容
-        if (tuning_sets[i].set+set_base == set) {
+    for (uint8_t i=0; tuning_sets[i].num_parms != 0; i++) {//tuning_sets定义在tuning.cpp内为各参数组的集合
+        if (tuning_sets[i].set+set_base == set) {//.set==set-set_base
             for (uint8_t p=0; p<tuning_sets[i].num_parms; p++) {
                 if (p >= 32 || (need_revert & (1U<<p))) {
                     reload_value(tuning_sets[i].parms[p]);

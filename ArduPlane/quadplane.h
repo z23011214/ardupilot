@@ -362,11 +362,11 @@ private:
 
     // true if we have reached the airspeed threshold for transition
     enum {
-        TRANSITION_AIRSPEED_WAIT,
-        TRANSITION_TIMER,
-        TRANSITION_ANGLE_WAIT_FW,
-        TRANSITION_ANGLE_WAIT_VTOL,
-        TRANSITION_DONE
+        TRANSITION_AIRSPEED_WAIT,   //过渡空速等待、
+        TRANSITION_TIMER,           //过渡时间？计次？定时？
+        TRANSITION_ANGLE_WAIT_FW,   //过渡角度等待。固定翼
+        TRANSITION_ANGLE_WAIT_VTOL, //过渡角度等待，垂直起降
+        TRANSITION_DONE             //倾转完成
     } transition_state;
 
     // true when waiting for pilot throttle

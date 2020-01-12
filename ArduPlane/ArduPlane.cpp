@@ -35,7 +35,7 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     // Units:                          Hz      us
     SCHED_TASK(ahrs_update,           400,    400), //姿态解算
     SCHED_TASK(read_radio,             50,    100), //信号读取
-    SCHED_TASK(check_short_failsafe,   50,    100), //短故障检查
+    SCHED_TASK(check_short_failsafe,   50,    100), //rc短时故障检查
     SCHED_TASK(update_speed_height,    50,    200), //更新速度高度
     SCHED_TASK(update_control_mode,   400,    100), //更新控制模式
     SCHED_TASK(stabilize,             400,    100), //稳定
@@ -186,16 +186,17 @@ void Plane::ahrs_update()
  */
 void Plane::update_speed_height(void)
 {
-    if (auto_throttle_mode) {
+    if (auto_throttle_mode) {//自动油门模式，需要运行自动高度控制器
 	    // Call TECS 50Hz update. Note that we call this regardless of
 	    // throttle suppressed, as this needs to be running for
 	    // takeoff detection
+        //进行起飞检测
         SpdHgt_Controller->update_50hz();
     }
-
-    if (quadplane.in_vtol_mode() ||
-        quadplane.in_assisted_flight()) {
-        quadplane.update_throttle_thr_mix();
+    
+    if (quadplane.in_vtol_mode() ||             //在倾转模式下   或
+        quadplane.in_assisted_flight()) {       //四旋翼辅助飞行模式
+        quadplane.update_throttle_thr_mix();    //更新油门与角度控制(自稳？)的比例
     }
 }
 

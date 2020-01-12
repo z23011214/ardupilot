@@ -3141,46 +3141,50 @@ float QuadPlane::stopping_distance(void)
 void QuadPlane::update_throttle_thr_mix(void)
 {
     // transition will directly manage the mix
+    //倾转模式下将直接管理混控。这里就不用了？
     if (in_transition()) {
       return;
     }
 
     // if disarmed or landed prioritise throttle
+    //已上锁或油门为着陆优先
     if(!motors->armed()) {
-        attitude_control->set_throttle_mix_min();
+        attitude_control->set_throttle_mix_min();//将油门混合权值设小
         return;
     }
 
-    if (plane.control_mode == &plane.mode_qstabilize) {
+    if (plane.control_mode == &plane.mode_qstabilize) {//为四旋翼增稳模式时
         // manual throttle
-        if (plane.get_throttle_input() <= 0) {
-            attitude_control->set_throttle_mix_min();
+        if (plane.get_throttle_input() <= 0) {//若油门输入非正数
+            attitude_control->set_throttle_mix_min();//油门混合权值设小landing时的值
         } else {
-            attitude_control->set_throttle_mix_man();
+            attitude_control->set_throttle_mix_man();//油门混合权值设为手动的值
         }
     } else {
-        // autopilot controlled throttle
+        // autopilot controlled throttle 自动驾驶油门
 
         // check for aggressive flight requests - requested roll or pitch angle below 15 degrees
-        const Vector3f angle_target = attitude_control->get_att_target_euler_cd();
-        bool large_angle_request = (norm(angle_target.x, angle_target.y) > LAND_CHECK_LARGE_ANGLE_CD);
+        //激进飞行检查，滚转俯仰小于15°
+        const Vector3f angle_target = attitude_control->get_att_target_euler_cd();//cd 表示单位为0.01° centidegree
+        bool large_angle_request = (norm(angle_target.x, angle_target.y) > LAND_CHECK_LARGE_ANGLE_CD);//模长是否大于设置值，1500cd
 
         // check for large external disturbance - angle error over 30 degrees
+        //检查是否存在较大外部误差，最大30°
         const float angle_error = attitude_control->get_att_error_angle_deg();
-        bool large_angle_error = (angle_error > LAND_CHECK_ANGLE_ERROR_DEG);
+        bool large_angle_error = (angle_error > LAND_CHECK_ANGLE_ERROR_DEG);//是否大于30
 
         // check for large acceleration - falling or high turbulence
         Vector3f accel_ef = plane.ahrs.get_accel_ef_blended();
         accel_ef.z += GRAVITY_MSS;
-        bool accel_moving = (accel_ef.length() > LAND_CHECK_ACCEL_MOVING);
+        bool accel_moving = (accel_ef.length() > LAND_CHECK_ACCEL_MOVING);//加速度是否大于3
 
         // check for requested decent
-        bool descent_not_demanded = pos_control->get_desired_velocity().z >= 0.0f;
+        bool descent_not_demanded = pos_control->get_desired_velocity().z >= 0.0f;//非要求下降
 
         if ( large_angle_request || large_angle_error || accel_moving || descent_not_demanded) {
-            attitude_control->set_throttle_mix_max(1.0);
+            attitude_control->set_throttle_mix_max(1.0);//参数为0-1间的数，越大越偏向max，否则偏向min
         } else {
-            attitude_control->set_throttle_mix_min();
+            attitude_control->set_throttle_mix_min();//或用set_throttle_mix_max(0)，一样的效果
         }
     }
 }

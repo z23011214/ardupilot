@@ -270,10 +270,10 @@ const AP_Param::GroupInfo AP_TECS::var_info[] = {
 
 void AP_TECS::update_50hz(void)
 {
-    // Implement third order complementary filter for height and height rate
-    // estimated height rate = _climb_rate
-    // estimated height above field elevation  = _height
-    // Reference Paper :
+    // Implement third order complementary filter for height and height rate    实现三阶互补滤波器的高度与其速度
+    // estimated height rate = _climb_rate                                      估计的高度速率值
+    // estimated height above field elevation  = _height                        估计的海拔高度
+    // Reference Paper :参考以下文献
     // Optimizing the Gains of the Baro-Inertial Vertical Channel
     // Widnall W.S, Sinha P.K,
     // AIAA Journal of Guidance and Control, 78-1307R
@@ -281,14 +281,17 @@ void AP_TECS::update_50hz(void)
     /*
       if we have a vertical position estimate from the EKF then use
       it, otherwise use barometric altitude
+      用EKF的高度数据，没有就用气压计的
      */
+
+    //获取高度
     _ahrs.get_relative_position_D_home(_height);
     _height *= -1.0f;
 
     // Calculate time in seconds since last update
     uint64_t now = AP_HAL::micros64();
     float DT = (now - _update_50hz_last_usec) * 1.0e-6f;
-    if (DT > 1.0f) {
+    if (DT > 1.0f) {//间隔大于1s，说明有问题，则速率置零，滤波器的dd（二阶导）项置零，重新用小时间常量DT=0.02s开始
         _climb_rate = 0.0f;
         _height_filter.dd_height = 0.0f;
         DT            = 0.02f; // when first starting TECS, use a
@@ -297,7 +300,9 @@ void AP_TECS::update_50hz(void)
     _update_50hz_last_usec = now;
 
     // Use inertial nav verical velocity and height if available
-    Vector3f velned;
+    //用内部惯导获取速度与高度
+
+    Vector3f velned;//北东地坐标系惯导速度数据
     if (_ahrs.get_velocity_NED(velned)) {
         // if possible use the EKF vertical velocity
         _climb_rate = -velned.z;
@@ -305,13 +310,34 @@ void AP_TECS::update_50hz(void)
         /*
           use a complimentary filter to calculate climb_rate. This is
           designed to minimise lag
+          为减少延迟而设计的滤波器，得到速度
          */
-        const float baro_alt = AP::baro().get_altitude();
+        const float baro_alt = AP::baro().get_altitude();//气压计高度
         // Get height acceleration
-        float hgt_ddot_mea = -(_ahrs.get_accel_ef().z + GRAVITY_MSS);
-        // Perform filter calculation using backwards Euler integration
-        // Coefficients selected to place all three filter poles at omega
-        float omega2 = _hgtCompFiltOmega*_hgtCompFiltOmega;
+        float hgt_ddot_mea = -(_ahrs.get_accel_ef().z + GRAVITY_MSS);//获取加速度，要减去重力加速度，向上为正，于是要减去(-g)
+       
+        // Perform filter calculation using backwards Euler integration 
+        // Coefficients selected to place all three filter poles at omega  
+        //反向欧拉积分滤波器，通过选择系数将滤波器极点置于Ω，涉及滤波器动态系统
+        //从ESO角度理解：
+        //可以看作一个经典的SISO的ESO
+        //原系统 h1=h,h2=hd
+        //h1d=h2
+        //h2d=hdd=hdd_observe+dis
+        //扩张系统
+        //h1d=h2
+        //h2d=hdd_observe+d3
+        //d3d=?
+        //将hdd_observe看作input，将h_observe看作output，从而
+        //h1d=h2+L1*(h_observe-h1)
+        //h2d=hdd_observe+d3+L2*(h_observe-h1)
+        //d3d=L3*(h_observe-h1)
+        //A=[-L1 1 0;-L2 0 1;-L3 0 0]
+        //det(xI-A)=x^3+L1*x^2+L2*x+L3
+        //取二项式系数，则
+        //L3=Ω^3,L2=3*Ω^2,L1=3*Ω,从而有det(xI-A)=(x+Ω)^3，完成极点配置
+
+        float omega2 = _hgtCompFiltOmega*_hgtCompFiltOmega;//参数表中设置，默认为3
         float hgt_err = baro_alt - _height_filter.height;
         float integ1_input = hgt_err * omega2 * _hgtCompFiltOmega;
 
@@ -333,10 +359,12 @@ void AP_TECS::update_50hz(void)
 
     // Update and average speed rate of change
     // Get DCM
+    //这个操作不是高度方向的吧，为毛写在这里
     const Matrix3f &rotMat = _ahrs.get_rotation_body_to_ned();
     // Calculate speed rate of change
-    float temp = rotMat.c.x * GRAVITY_MSS + AP::ins().get_accel().x;
+    float temp = rotMat.c.x * GRAVITY_MSS + AP::ins().get_accel().x;//对matrix3：abc为行，xyz为列
     // take 5 point moving average
+    //均值滤波，窗口为5，还不知道在哪里设
     _vel_dot = _vdot_filter.apply(temp);
 
 }

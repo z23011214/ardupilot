@@ -383,18 +383,18 @@ void Plane::check_short_failsafe()
 {
     // only act on changes
     // -------------------
-    if (g.fs_action_short != FS_ACTION_SHORT_DISABLED &&
-       failsafe.state == FAILSAFE_NONE &&
-       flight_stage != AP_Vehicle::FixedWing::FLIGHT_LAND) {
+    if (g.fs_action_short != FS_ACTION_SHORT_DISABLED &&//fs_action_short不为disable
+       failsafe.state == FAILSAFE_NONE &&               //fs的当前状态为none
+       flight_stage != AP_Vehicle::FixedWing::FLIGHT_LAND) {//飞行状态不为着陆模式
         // The condition is checked and the flag rc_failsafe is set in radio.cpp
-        if(failsafe.rc_failsafe) {
-            failsafe_short_on_event(FAILSAFE_SHORT, ModeReason::RADIO_FAILSAFE);
+        if(failsafe.rc_failsafe) {                      //若在rc_failsafe情况下
+            failsafe_short_on_event(FAILSAFE_SHORT, ModeReason::RADIO_FAILSAFE);//rc短时失灵处理方案
         }
     }
 
-    if(failsafe.state == FAILSAFE_SHORT) {
-        if(!failsafe.rc_failsafe || g.fs_action_short == FS_ACTION_SHORT_DISABLED) {
-            failsafe_short_off_event(ModeReason::RADIO_FAILSAFE);
+    if(failsafe.state == FAILSAFE_SHORT) {//故障状态为short，短时故障
+        if(!failsafe.rc_failsafe || g.fs_action_short == FS_ACTION_SHORT_DISABLED) {//RC正常，且启用了短时故障处理
+            failsafe_short_off_event(ModeReason::RADIO_FAILSAFE);//离开rc故障状态时的处理
         }
     }
 }

@@ -233,7 +233,7 @@ void Plane::read_radio()
     // check for transmitter tuning changes
     //各飞行模式下的参数调整
     //注意，其中有几个函数被重写
-    //有些问题，RC_Channel调PID参数？
+    //有些问题，RC_Channel调PID参数？飞行中？
     tuning.check_input(control_mode->mode_number());
 }
 
