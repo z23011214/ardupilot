@@ -147,7 +147,7 @@ private:
     AP_Float slope_recalc_shallow_threshold;
     AP_Float slope_recalc_steep_threshold_to_abort;
     AP_Int8 disarm_delay;
-    AP_Int8 then_servos_neutral;
+    AP_Int8 then_servos_neutral;//默认0：禁用；1：着陆后舵机撤档(0pwm)；2：最小pwm
     AP_Int8 abort_throttle_enable;
     AP_Int8 flap_percent;
     AP_Int8 throttle_slewrate;

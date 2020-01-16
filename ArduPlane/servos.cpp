@@ -344,6 +344,7 @@ void Plane::set_servos_manual_passthrough(void)
 
 /*
   calculate any throttle limits based on the watt limiter
+  根据功率限制油门
  */
 void Plane::throttle_watt_limiter(int8_t &min_throttle, int8_t &max_throttle)
 {
@@ -401,19 +402,19 @@ void Plane::set_servos_controlled(void)
     }
 
     // convert 0 to 100% (or -100 to +100) into PWM
-    int8_t min_throttle = aparm.throttle_min.get();
-    int8_t max_throttle = aparm.throttle_max.get();
+    int8_t min_throttle = aparm.throttle_min.get();//默认0
+    int8_t max_throttle = aparm.throttle_max.get();//默认100
 
     // apply idle governor
     g2.ice_control.update_idle_governor(min_throttle);
     
-    if (min_throttle < 0 && !allow_reverse_thrust()) {
+    if (min_throttle < 0 && !allow_reverse_thrust()) {//限幅
         // reverse thrust is available but inhibited.
         min_throttle = 0;
     }
     
-    if (flight_stage == AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || flight_stage == AP_Vehicle::FixedWing::FLIGHT_ABORT_LAND) {
-        if(aparm.takeoff_throttle_max != 0) {
+    if (flight_stage == AP_Vehicle::FixedWing::FLIGHT_TAKEOFF || flight_stage == AP_Vehicle::FixedWing::FLIGHT_ABORT_LAND) {//起飞或放弃降落
+        if(aparm.takeoff_throttle_max != 0) {//默认0
             max_throttle = aparm.takeoff_throttle_max;
         } else {
             max_throttle = aparm.throttle_max;
@@ -423,12 +424,13 @@ void Plane::set_servos_controlled(void)
     }
     
     // apply watt limiter
+    //功率限制了油门
     throttle_watt_limiter(min_throttle, max_throttle);
     
     SRV_Channels::set_output_scaled(SRV_Channel::k_throttle,
                                     constrain_int16(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle), min_throttle, max_throttle));
     
-    if (!hal.util->get_soft_armed()) {
+    if (!hal.util->get_soft_armed()) {//未解锁
         if (arming.arming_required() == AP_Arming::Required::YES_ZERO_PWM) {
             SRV_Channels::set_output_limit(SRV_Channel::k_throttle, SRV_Channel::Limit::ZERO_PWM);
             SRV_Channels::set_output_limit(SRV_Channel::k_throttleLeft, SRV_Channel::Limit::ZERO_PWM);
@@ -438,8 +440,9 @@ void Plane::set_servos_controlled(void)
             SRV_Channels::set_output_scaled(SRV_Channel::k_throttleLeft, 0);
             SRV_Channels::set_output_scaled(SRV_Channel::k_throttleRight, 0);
         }
-    } else if (suppress_throttle()) {
+    } else if (suppress_throttle()) {//油门抑制
         // throttle is suppressed in auto mode
+        //在自动模式下抑制油门
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0);
         if (g.throttle_suppress_manual) {
             // manual pass through of throttle while throttle is suppressed
@@ -449,7 +452,7 @@ void Plane::set_servos_controlled(void)
                control_mode == &mode_training ||
                control_mode == &mode_acro ||
                control_mode == &mode_fbwa ||
-               control_mode == &mode_autotune) {
+               control_mode == &mode_autotune) {//手动油门模式
         // a manual throttle mode
         if (failsafe.throttle_counter) {
             SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0);
@@ -462,10 +465,10 @@ void Plane::set_servos_controlled(void)
                                             constrain_int16(get_throttle_input(true), min_throttle, max_throttle));
         }
     } else if ((control_mode == &mode_guided || control_mode == &mode_avoidADSB) &&
-               guided_throttle_passthru) {
+               guided_throttle_passthru) {//制导模式
         // manual pass through of throttle while in GUIDED
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, get_throttle_input(true));
-    } else if (quadplane.in_vtol_mode()) {
+    } else if (quadplane.in_vtol_mode()) {//垂直起降模式
         // ask quadplane code for forward throttle
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 
             constrain_int16(quadplane.forward_throttle_pct(), min_throttle, max_throttle));
@@ -477,7 +480,7 @@ void Plane::set_servos_controlled(void)
         control_mode == &mode_auto || control_mode == &mode_loiter) &&
         g2.soaring_controller.is_active() &&
         g2.soaring_controller.get_throttle_suppressed()) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0);//该模式下抑制油门
     }
 #endif
 }
@@ -696,7 +699,7 @@ void Plane::set_servos(void)
     //更新quadplane的motors
     quadplane.update();
 
-    if (control_mode == &mode_auto && auto_state.idle_mode) {
+    if (control_mode == &mode_auto && auto_state.idle_mode) {//自动模式  且 空闲模式
         // special handling for balloon launch
         set_servos_idle();
         servos_output();
@@ -710,47 +713,51 @@ void Plane::set_servos(void)
         // we are not at an altitude for ground steering. Set the nose
         // wheel to the rudder just in case the barometer has drifted
         // a lot
+        //在地面转向高度外
         steering_control.steering = steering_control.rudder;
     } else if (!SRV_Channels::function_assigned(SRV_Channel::k_steering)) {
         // we are within the ground steering altitude but don't have a
         // dedicated steering channel. Set the rudder to the ground
         // steering output
+        //在地面转向高度内
         steering_control.rudder = steering_control.steering;
     }
 
     // clear ground_steering to ensure manual control if the yaw stabilizer doesn't run
     steering_control.ground_steering = false;
 
-    if (control_mode == &mode_training) {
+    if (control_mode == &mode_training) {//训练模式
         steering_control.rudder = channel_rudder->get_control_in();
     }
     
     SRV_Channels::set_output_scaled(SRV_Channel::k_rudder, steering_control.rudder);
     SRV_Channels::set_output_scaled(SRV_Channel::k_steering, steering_control.steering);
 
-    if (control_mode == &mode_manual) {
-        set_servos_manual_passthrough();
+    if (control_mode == &mode_manual) {//手动模式
+        set_servos_manual_passthrough();//手动模式各种直接输出
     } else {
         set_servos_controlled();
     }
 
     // setup flap outputs
+    //设置襟翼
     set_servos_flaps();
 
 #if LANDING_GEAR_ENABLED == ENABLED
+    //起落架设置
     // setup landing gear output
     set_landing_gear();
 #endif
     
-    if (auto_throttle_mode ||
-        quadplane.in_assisted_flight() ||
-        quadplane.in_vtol_mode()) {
+    if (auto_throttle_mode ||               //自动油门
+        quadplane.in_assisted_flight() ||   //辅助飞行
+        quadplane.in_vtol_mode()) {         //vtol
         /* only do throttle slew limiting in modes where throttle
          *  control is automatic */
-        throttle_slew_limit(SRV_Channel::k_throttle);
+        throttle_slew_limit(SRV_Channel::k_throttle);//油门进行摆振限幅
     }
 
-    if (!arming.is_armed()) {
+    if (!arming.is_armed()) {//未解锁时,有些电调会响
         //Some ESCs get noisy (beep error msgs) if PWM == 0.
         //This little segment aims to avoid this.
         switch (arming.arming_required()) { 
@@ -788,13 +795,14 @@ void Plane::set_servos(void)
     }
 #endif
 
-    if (landing.get_then_servos_neutral() > 0 &&
+    if (landing.get_then_servos_neutral() > 0 && //回中
             control_mode == &mode_auto &&
             landing.get_disarm_delay() > 0 &&
             landing.is_complete() &&
             !arming.is_armed()) {
         // after an auto land and auto disarm, set the servos to be neutral just
         // in case we're upside down or some crazy angle and straining the servos.
+        //着陆后舵机撤档，默认0：禁用
         if (landing.get_then_servos_neutral() == 1) {
             SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, 0);
             SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, 0);
@@ -827,16 +835,18 @@ void Plane::servos_output(void)
     SRV_Channels::cork();
 
     // support twin-engine aircraft
+    //双发
     servos_twin_engine_mix();
 
     // cope with tailsitters and bicopters
-    quadplane.tailsitter_output();
-    quadplane.tiltrotor_bicopter();
+    quadplane.tailsitter_output();//尾座式输出，不看
+    quadplane.tiltrotor_bicopter();//双旋翼，也先不看
 
     // the mixers need pwm to be calculated now
     SRV_Channels::calc_pwm();
 
     // run vtail and elevon mixers
+    //混控
     servo_output_mixers();
 
     // support MANUAL_RCMASK
@@ -848,7 +858,7 @@ void Plane::servos_output(void)
 
     SRV_Channels::output_ch_all();
 
-    SRV_Channels::push();
+    SRV_Channels::push();//pwm硬件输出接口
 
     if (g2.servo_channels.auto_trim_enabled()) {
         servos_auto_trim();

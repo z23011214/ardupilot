@@ -12,7 +12,7 @@
 float QuadPlane::tilt_max_change(bool up)
 {
     float rate;
-    if (up || tilt.max_rate_down_dps <= 0) {
+    if (up || tilt.max_rate_down_dps <= 0) {//dps是个单位吗？°/s?
         rate = tilt.max_rate_up_dps;
     } else {
         rate = tilt.max_rate_down_dps;
@@ -39,10 +39,11 @@ float QuadPlane::tilt_max_change(bool up)
  */
 void QuadPlane::tiltrotor_slew(float newtilt)
 {
-    float max_change = tilt_max_change(newtilt<tilt.current_tilt);
+    float max_change = tilt_max_change(newtilt < tilt.current_tilt);
     tilt.current_tilt = constrain_float(newtilt, tilt.current_tilt-max_change, tilt.current_tilt+max_change);
 
     // translate to 0..1000 range and output
+    //0-1000的范围并输出
     SRV_Channels::set_output_scaled(SRV_Channel::k_motor_tilt, 1000 * tilt.current_tilt);
 }
 
@@ -51,15 +52,16 @@ void QuadPlane::tiltrotor_slew(float newtilt)
  */
 void QuadPlane::tiltrotor_continuous_update(void)
 {
-    // default to inactive
+    //default to inactive
     //默认false
     tilt.motors_active = false;
 
-    // the maximum rate of throttle change
+    //the maximum rate of throttle change
     //油门最大变化率
     float max_change;
     
     if (!in_vtol_mode() && (!hal.util->get_soft_armed() || !assisted_flight)) {
+        //当我们处于纯固定翼模式时
         // we are in pure fixed wing mode. Move the tiltable motors all the way forward and run them as
         // a forward motor
         tiltrotor_slew(1);
@@ -67,18 +69,18 @@ void QuadPlane::tiltrotor_continuous_update(void)
         max_change = tilt_max_change(false);
         
         float new_throttle = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle)*0.01, 0, 1);
-        if (tilt.current_tilt < 1) {
+        if (tilt.current_tilt < 1) {//连续倾转，限制倾转速率
             tilt.current_throttle = constrain_float(new_throttle,
                                                     tilt.current_throttle-max_change,
                                                     tilt.current_throttle+max_change);
         } else {
-            tilt.current_throttle = new_throttle;
+            tilt.current_throttle = new_throttle;//否则，不限制
         }
-        if (!hal.util->get_soft_armed()) {
+        if (!hal.util->get_soft_armed()) {//未解锁，设为0
             tilt.current_throttle = 0;
         } else {
             // the motors are all the way forward, start using them for fwd thrust
-            uint8_t mask = is_zero(tilt.current_throttle)?0:(uint8_t)tilt.tilt_mask.get();
+            uint8_t mask = is_zero(tilt.current_throttle)?0:(uint8_t)tilt.tilt_mask.get();//是否存在motor有倾转标志
             motors->output_motor_mask(tilt.current_throttle, mask, plane.rudder_dt);
             // prevent motor shutdown
             tilt.motors_active = true;
@@ -110,13 +112,13 @@ void QuadPlane::tiltrotor_continuous_update(void)
     */
     if (plane.control_mode == &plane.mode_qstabilize ||
         plane.control_mode == &plane.mode_qhover ||
-        plane.control_mode == &plane.mode_qautotune) {
+        plane.control_mode == &plane.mode_qautotune) {//纯多旋翼模式，倾转角为0(0°)
         tiltrotor_slew(0);
         return;
     }
 
     if (assisted_flight &&
-        transition_state >= TRANSITION_TIMER) {
+        transition_state >= TRANSITION_TIMER) {//固定翼模式 ，倾转角固定为1(90°)
         // we are transitioning to fixed wing - tilt the motors all
         // the way forward
         tiltrotor_slew(1);
@@ -125,8 +127,8 @@ void QuadPlane::tiltrotor_continuous_update(void)
         // Q_TILT_MAX. Anything above 50% throttle gets
         // Q_TILT_MAX. Below 50% throttle we decrease linearly. This
         // relies heavily on Q_VFWD_GAIN being set appropriately.
-        float settilt = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle) / 50.0f, 0, 1);
-        tiltrotor_slew(settilt * tilt.max_angle_deg / 90.0f);
+        float settilt = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle) / 50.0f, 0, 1);//油门前50%线性变化，之后饱和
+        tiltrotor_slew(settilt * tilt.max_angle_deg / 90.0f);//于是该值0~45°
     }
 }
 

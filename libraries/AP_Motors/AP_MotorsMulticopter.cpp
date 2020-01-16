@@ -446,6 +446,7 @@ float AP_MotorsMulticopter::thrust_to_actuator(float thrust_in)
 void AP_MotorsMulticopter::set_actuator_with_slew(float& actuator_output, float input)
 {
     /*
+    一些限幅，限制后的赋值
     If MOT_SLEW_UP_TIME is 0 (default), no slew limit is applied to increasing output.
     If MOT_SLEW_DN_TIME is 0 (default), no slew limit is applied to decreasing output.
     MOT_SLEW_UP_TIME and MOT_SLEW_DN_TIME are constrained to 0.0~0.5 for sanity.
