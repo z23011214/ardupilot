@@ -100,6 +100,7 @@ public:
     float               get_pitch() const { return _pitch_in; }
     float               get_yaw() const { return _yaw_in; }
     float               get_throttle_out() const { return _throttle_out; }
+    //获取油门滤波与限幅后的值
     float               get_throttle() const { return constrain_float(_throttle_filter.get(), 0.0f, 1.0f); }
     float               get_throttle_bidirectional() const { return constrain_float(2 * (_throttle_filter.get() - 0.5f), -1.0f, 1.0f); }
     float               get_forward() const { return _forward_in; }
@@ -113,9 +114,9 @@ public:
 
     // desired spool states
     enum class DesiredSpoolState : uint8_t {
-        SHUT_DOWN = 0,              // all motors should move to stop
-        GROUND_IDLE = 1,            // all motors should move to ground idle
-        THROTTLE_UNLIMITED = 2,     // motors should move to being a state where throttle is unconstrained (e.g. by start up procedure)
+        SHUT_DOWN = 0,              //停转 all motors should move to stop
+        GROUND_IDLE = 1,            //地面上意思意思转转，提醒作用 all motors should move to ground idle
+        THROTTLE_UNLIMITED = 2,     //正常工作？ motors should move to being a state where throttle is unconstrained (e.g. by start up procedure)
     };
 
     void set_desired_spool_state(enum DesiredSpoolState spool);
@@ -223,7 +224,7 @@ protected:
     } _flags;
 
     // internal variables
-    uint16_t            _loop_rate;                 // rate in Hz at which output() function is called (normally 400hz)
+    uint16_t            _loop_rate;                 //类构造参数，通常时400hz，与运行频率相同 rate in Hz at which output() function is called (normally 400hz)
     uint16_t            _speed_hz;                  // speed in hz to send updates to motors
     float               _roll_in;                   // desired roll control from attitude controllers, -1 ~ +1
     float               _roll_in_ff;                // desired roll feed forward control from attitude controllers, -1 ~ +1
@@ -255,8 +256,8 @@ protected:
     AP_Int8             _pwm_type;            // PWM output type
 
     // motor failure handling
-    bool                _thrust_boost;          // true if thrust boost is enabled to handle motor failure
-    bool                _thrust_balanced;       // true when output thrust is well balanced
+    bool                _thrust_boost;          //是否启用推力增强 true if thrust boost is enabled to handle motor failure
+    bool                _thrust_balanced;       //推力输出是否已平衡 true when output thrust is well balanced
     float               _thrust_boost_ratio;    // choice between highest and second highest motor output for output mixing (0 ~ 1). Zero is normal operation
 
 private:

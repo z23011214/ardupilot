@@ -496,7 +496,7 @@ void SRV_Channels::set_output_scaled(SRV_Channel::Aux_servo_function_t function,
 {
     if (function < SRV_Channel::k_nr_aux_servo_functions) {
         functions[function].output_scaled = value;
-        SRV_Channel::have_pwm_mask &= ~functions[function].channel_mask;
+        SRV_Channel::have_pwm_mask &= ~functions[function].channel_mask;//写入后就将标志位置零
     }
 }
 

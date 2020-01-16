@@ -364,7 +364,7 @@ void AP_TECS::update_50hz(void)
     // Calculate speed rate of change
     float temp = rotMat.c.x * GRAVITY_MSS + AP::ins().get_accel().x;//对matrix3：abc为行，xyz为列
     // take 5 point moving average
-    //均值滤波，窗口为5，还不知道在哪里设
+    //均值滤波，窗口为5，typedef里面设置
     _vel_dot = _vdot_filter.apply(temp);
 
 }

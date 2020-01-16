@@ -4,45 +4,55 @@
   get a speed scaling number for control surfaces. This is applied to
   PIDs to change the scaling of the PID with speed. At high speed we
   move the surfaces less, and at low speeds we move them more.
+  对speed_scaler进行计算以及各种限幅
  */
 float Plane::get_speed_scaler(void)
 {
     float aspeed, speed_scaler;
-    if (ahrs.airspeed_estimate(&aspeed)) {
+    if (ahrs.airspeed_estimate(&aspeed)) {//获取空速估计值
+        //更新最大速度
         if (aspeed > auto_state.highest_airspeed) {
             auto_state.highest_airspeed = aspeed;
         }
+        //若速度不为一个极小的常数，则将缩放值设为1/aspeed，否则为2
         if (aspeed > 0.0001f) {
-            speed_scaler = g.scaling_speed / aspeed;
+            //g、g2参数定义均在parameters.cpp的参数表中 
+            speed_scaler = g.scaling_speed / aspeed;//SCALING_SPEED 15
+
         } else {
             speed_scaler = 2.0;
         }
         // ensure we have scaling over the full configured airspeed
-        float scale_min = MIN(0.5, (0.5 * aparm.airspeed_min) / g.scaling_speed);
-        float scale_max = MAX(2.0, (1.5 * aparm.airspeed_max) / g.scaling_speed);
-        speed_scaler = constrain_float(speed_scaler, scale_min, scale_max);
+        float scale_min = MIN(0.5, (0.5 * aparm.airspeed_min) / g.scaling_speed);//AIRSPEED_FBW_MIN 9
+        float scale_max = MAX(2.0, (1.5 * aparm.airspeed_max) / g.scaling_speed);//AIRSPEED_FBW_MAX 22,同样在parameters.cpp
+        speed_scaler = constrain_float(speed_scaler, scale_min, scale_max);//限制在范围内
 
-        if (quadplane.in_vtol_mode() && hal.util->get_soft_armed()) {
+        if (quadplane.in_vtol_mode() && hal.util->get_soft_armed()) {//vtol模式 且 解锁
             // when in VTOL modes limit surface movement at low speed to prevent instability
-            float threshold = aparm.airspeed_min * 0.5;
+            float threshold = aparm.airspeed_min * 0.5;//4.5限幅
             if (aspeed < threshold) {
+                //new_scaler=s_s*as/th^2
+                //speed_scaler=s_s/as
+                //aspeed < threshold <=> 1/as>1/th <=> speed_scaler > new_scaler
                 float new_scaler = linear_interpolate(0, g.scaling_speed / threshold, aspeed, 0, threshold);
                 speed_scaler = MIN(speed_scaler, new_scaler);
 
                 // we also decay the integrator to prevent an integrator from before
                 // we were at low speed persistint at high speed
+                //*0.995抑制I
                 rollController.decay_I();
                 pitchController.decay_I();
                 yawController.decay_I();
             }
         }
-    } else if (hal.util->get_soft_armed()) {
+    } else if (hal.util->get_soft_armed()) {//不在vtol模式，但解锁了
+
         // scale assumed surface movement using throttle output
-        float throttle_out = MAX(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle), 1);
+        float throttle_out = MAX(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle), 1);//获得一个>=1的一个油门输出
         speed_scaler = sqrtf(THROTTLE_CRUISE / throttle_out);
         // This case is constrained tighter as we don't have real speed info
         speed_scaler = constrain_float(speed_scaler, 0.6f, 1.67f);
-    } else {
+    } else {//未解锁，置一
         // no speed estimate and not armed, use a unit scaling
         speed_scaler = 1;
     }
@@ -290,8 +300,8 @@ void Plane::stabilize_training(float speed_scaler)
 
 
 /*
-  this is the ACRO mode stabilization function. It does rate
-  stabilization on roll and pitch axes
+  this is the ACRO mode stabilization function. 
+  It does rate stabilization on roll and pitch axes
  */
 void Plane::stabilize_acro(float speed_scaler)
 {
@@ -364,13 +374,14 @@ void Plane::stabilize()
 {
     if (control_mode == &mode_manual) {
         // reset steering controls
+        //重置转向控制，不禁用？
         steer_state.locked_course = false;
         steer_state.locked_course_err = 0;
         return;
     }
     float speed_scaler = get_speed_scaler();
 
-    if (quadplane.in_tailsitter_vtol_transition()) {
+    if (quadplane.in_tailsitter_vtol_transition()) {//尾座式时的操作
         /*
           during transition to vtol in a tailsitter try to raise the
           nose rapidly while keeping the wings level
@@ -380,7 +391,7 @@ void Plane::stabilize()
     }
 
     uint32_t now = AP_HAL::millis();
-    if (now - last_stabilize_ms > 2000) {
+    if (now - last_stabilize_ms > 2000) {//两秒没跑，就重置积分器，且重置转向控制
         // if we haven't run the rate controllers for 2 seconds then
         // reset the integrators
         rollController.reset_I();
@@ -393,9 +404,9 @@ void Plane::stabilize()
     }
     last_stabilize_ms = now;
 
-    if (control_mode == &mode_training) {
+    if (control_mode == &mode_training) {//训练模式就用训练模式的自稳
         stabilize_training(speed_scaler);
-    } else if (control_mode == &mode_acro) {
+    } else if (control_mode == &mode_acro) {//acro模式，特技模式，直接由遥控器给电机，类似加速度的控制？
         stabilize_acro(speed_scaler);
     } else if ((control_mode == &mode_qstabilize ||
                 control_mode == &mode_qhover ||
@@ -404,27 +415,29 @@ void Plane::stabilize()
                 control_mode == &mode_qrtl ||
                 control_mode == &mode_qacro ||
                 control_mode == &mode_qautotune) &&
-               !quadplane.in_tailsitter_vtol_transition()) {
-        quadplane.control_run();
+               !quadplane.in_tailsitter_vtol_transition()) {//四旋翼模式 且 不在尾座式倾转时
+        quadplane.control_run();//不同的模式对应不同的控制程序，☆需要细看
     } else {
-        if (g.stick_mixing == STICK_MIXING_FBW && control_mode != &mode_stabilize) {
-            stabilize_stick_mixing_fbw();
+        if (g.stick_mixing == STICK_MIXING_FBW && control_mode != &mode_stabilize) {//遥控杆混控设置？
+            stabilize_stick_mixing_fbw();//使用fbw方式操控
         }
+        //固定翼的自稳？
         stabilize_roll(speed_scaler);
         stabilize_pitch(speed_scaler);
         if (g.stick_mixing == STICK_MIXING_DIRECT || control_mode == &mode_stabilize) {
-            stabilize_stick_mixing_direct();
+            stabilize_stick_mixing_direct();//直接操控
         }
-        stabilize_yaw(speed_scaler);
+        stabilize_yaw(speed_scaler);//固定翼的增稳？
     }
 
     /*
       see if we should zero the attitude controller integrators. 
      */
-    if (get_throttle_input() == 0 &&
-        fabsf(relative_altitude) < 5.0f && 
-        fabsf(barometer.get_climb_rate()) < 0.5f &&
-        gps.ground_speed() < 3) {
+    if (get_throttle_input() == 0 &&                            //油门输入为0
+        fabsf(relative_altitude) < 5.0f &&                      //相对高度小于5
+        fabsf(barometer.get_climb_rate()) < 0.5f &&             //爬升率小于0.5
+        gps.ground_speed() < 3) {                               //地速小于3
+        //此时积分器置零
         // we are low, with no climb rate, and zero throttle, and very
         // low ground speed. Zero the attitude controller
         // integrators. This prevents integrator buildup pre-takeoff.
@@ -433,7 +446,7 @@ void Plane::stabilize()
         yawController.reset_I();
 
         // if moving very slowly also zero the steering integrator
-        if (gps.ground_speed() < 1) {
+        if (gps.ground_speed() < 1) {//飞得慢就置零转向控制器的积分器
             steerController.reset_I();            
         }
     }

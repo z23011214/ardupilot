@@ -263,6 +263,12 @@ private:
     ModeStabilize mode_stabilize;
     ModeTraining mode_training;
     ModeAcro mode_acro;
+    /*
+    这是ArduPlane受协助飞行的最受欢迎的模式，而且是对于无经验飞手们最好的模式。
+    在这个模式之中，ArduPlane会拦截遥控器发出的副翼和升降舵的信号。
+    所以如果你将副翼向右猛打，飞机会保持它的升降舵水平同时，会以在LIM_ROLL_CD选项（单位为度数）中的角度设定来向右倾侧。
+    飞机不可能以超过上述设定的角度倾侧，也不可能以超出LIM_PITCH_MAX/LIM_PITCH_MIN设定的角度来俯仰飞机。
+    */
     ModeFBWA mode_fbwa;
     ModeFBWB mode_fbwb;
     ModeCruise mode_cruise;
@@ -443,6 +449,7 @@ private:
 
         // the highest airspeed we have reached since entering AUTO. Used
         // to control ground takeoff
+        //auto模式以来的最大速度，用来控制地面起飞
         float highest_airspeed;
         
         // turn angle for next leg of mission

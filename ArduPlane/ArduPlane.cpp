@@ -38,7 +38,7 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK(check_short_failsafe,   50,    100), //rc短时故障检查
     SCHED_TASK(update_speed_height,    50,    200), //更新速度高度
     SCHED_TASK(update_control_mode,   400,    100), //更新控制模式
-    SCHED_TASK(stabilize,             400,    100), //稳定
+    SCHED_TASK(stabilize,             400,    100), //自稳
     SCHED_TASK(set_servos,            400,    100), //电机设置
     SCHED_TASK(update_throttle_hover, 100,     90), //更新油门 悬停
     SCHED_TASK(read_control_switch,     7,    100), //读取控制切换
@@ -426,12 +426,16 @@ void Plane::update_control_mode(void)
 
     if (effective_mode != &mode_auto) {
         // hold_course is only used in takeoff and landing
+        //非自动模式下，航向保持禁用
         steer_state.hold_course_cd = -1;
     }
 
     // ensure we are fly-forward when we are flying as a pure fixed
     // wing aircraft. This helps the EKF produce better state
     // estimates as it can make stronger assumptions
+    //处于垂直起降或四旋翼模式时，ahrs前飞设置关闭
+    //处于着陆模式时，取决于landing是否为前飞模式
+    //其他状态ahrs均设置为前飞
     if (quadplane.in_vtol_mode() ||
         quadplane.in_assisted_flight()) {
         ahrs.set_fly_forward(false);
@@ -441,7 +445,7 @@ void Plane::update_control_mode(void)
         ahrs.set_fly_forward(true);
     }
 
-    effective_mode->update();
+    effective_mode->update();//不同模式下有不同的update，不想看了△
 }
 
 void Plane::update_navigation()

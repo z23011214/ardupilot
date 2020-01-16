@@ -149,16 +149,16 @@ protected:
 
     // parameters
     AP_Int16            _yaw_headroom;          // yaw control is given at least this pwm range
-    AP_Float            _thrust_curve_expo;     // curve used to linearize pwm to thrust conversion.  set to 0 for linear and 1 for second order approximation
+    AP_Float            _thrust_curve_expo;     //默认0.65 curve used to linearize pwm to thrust conversion.  set to 0 for linear and 1 for second order approximation
     AP_Float            _slew_up_time;          // throttle increase slew limitting
     AP_Float            _slew_dn_time;          // throttle decrease slew limitting
     AP_Float            _safe_time;             // Time for the esc when transitioning between zero pwm to minimum
-    AP_Float            _spin_min;              // throttle out ratio which produces the minimum thrust.  (i.e. 0 ~ 1 ) of the full throttle range
-    AP_Float            _spin_max;              // throttle out ratio which produces the maximum thrust.  (i.e. 0 ~ 1 ) of the full throttle range
-    AP_Float            _spin_arm;              // throttle out ratio which produces the armed spin rate.  (i.e. 0 ~ 1 ) of the full throttle range
+    AP_Float            _spin_min;              //默认0.15 最小推力的油门值 throttle out ratio which produces the minimum thrust.  (i.e. 0 ~ 1 ) of the full throttle range
+    AP_Float            _spin_max;              //默认0.95 最大推力的油门值 throttle out ratio which produces the maximum thrust.  (i.e. 0 ~ 1 ) of the full throttle range
+    AP_Float            _spin_arm;              //默认0.1 电机开始转动的油门值 throttle out ratio which produces the armed spin rate.  (i.e. 0 ~ 1 ) of the full throttle range
     AP_Float            _batt_voltage_max;      // maximum voltage used to scale lift
     AP_Float            _batt_voltage_min;      // minimum voltage used to scale lift
-    AP_Float            _batt_current_max;      // current over which maximum throttle is limited
+    AP_Float            _batt_current_max;      //默认0，是否启用电流限制 current over which maximum throttle is limited
     AP_Float            _batt_current_time_constant;    // Time constant used to limit the maximum current
     AP_Int8             _batt_idx;              // battery index used for compensation
     AP_Int16            _pwm_min;               // minimum PWM value that will ever be output to the motors (if 0, vehicle's throttle input channel's min pwm used)
@@ -171,6 +171,7 @@ protected:
     AP_Float            _yaw_servo_angle_max_deg;
 
     // time to spool motors to min throttle
+    //默认0.5 电机从0加到最低转速的时间
     AP_Float            _spool_up_time;
 
     // scaling for booster motor throttle
@@ -183,7 +184,7 @@ protected:
     // spool variables
 
     // spool variables
-    float               _spin_up_ratio;      // throttle percentage (0 ~ 1) between zero and throttle_min
+    float               _spin_up_ratio;      //刚起转油门值和最小油门限幅值之比 throttle percentage (0 ~ 1) between zero and throttle_min
 
     // battery voltage, current and air pressure compensation variables
     LowPassFilterFloat  _batt_voltage_filt;     // filtered battery voltage expressed as a percentage (0 ~ 1.0) of batt_voltage_max

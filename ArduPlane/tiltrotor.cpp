@@ -52,9 +52,11 @@ void QuadPlane::tiltrotor_slew(float newtilt)
 void QuadPlane::tiltrotor_continuous_update(void)
 {
     // default to inactive
+    //默认false
     tilt.motors_active = false;
 
     // the maximum rate of throttle change
+    //油门最大变化率
     float max_change;
     
     if (!in_vtol_mode() && (!hal.util->get_soft_armed() || !assisted_flight)) {
@@ -178,13 +180,14 @@ void QuadPlane::tiltrotor_update(void)
 {
     if (tilt.tilt_mask <= 0) {
         // no motors to tilt
+        //无倾转的旋翼
         return;
     }
 
     if (tilt.tilt_type == TILT_TYPE_BINARY) {
-        tiltrotor_binary_update();
+        tiltrotor_binary_update();//二进制倾转
     } else {
-        tiltrotor_continuous_update();
+        tiltrotor_continuous_update();//连续倾转
     }
 
     if (tilt.tilt_type == TILT_TYPE_VECTORED_YAW) {
@@ -286,11 +289,13 @@ void QuadPlane::tilt_compensate_up(float *thrust, uint8_t num_motors)
     // control while angled over. This greatly improves the stability
     // of the last phase of transitions
     float tilt_threshold = (tilt.max_angle_deg/90.0f);
-    bool equal_thrust = (tilt.current_tilt > tilt_threshold);
+    bool equal_thrust = (tilt.current_tilt > tilt_threshold);//是否倾转至固定翼的角度范围
 
     float tilt_total = 0;
     uint8_t tilt_count = 0;
     
+    //要倾转的旋翼推力求和然后平均
+    //不倾转的减小了一点。。。。
     // apply tilt_factor first
     for (uint8_t i=0; i<num_motors; i++) {
         if (!is_motor_tilting(i)) {

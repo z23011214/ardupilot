@@ -72,10 +72,11 @@ void AP_MotorsMatrix::set_frame_class_and_type(motor_frame_class frame_class, mo
 void AP_MotorsMatrix::output_to_motors()
 {
     int8_t i;
-
+    //各种限幅，好像默认的参数禁用了
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN: {
             // no output
+            //输出0
             for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
                 if (motor_enabled[i]) {
                     _actuator[i] = 0.0f;
@@ -106,7 +107,7 @@ void AP_MotorsMatrix::output_to_motors()
     // convert output to PWM and send to each motor
     for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-            rc_write(i, output_to_pwm(_actuator[i]));
+            rc_write(i, output_to_pwm(_actuator[i]));//☆各通道电机最后的输出
         }
     }
 }
@@ -138,12 +139,12 @@ void AP_MotorsMatrix::output_armed_stabilizing()
     float   pitch_thrust;               // pitch thrust input value, +/- 1.0
     float   yaw_thrust;                 // yaw thrust input value, +/- 1.0
     float   throttle_thrust;            // throttle thrust input value, 0.0 - 1.0
-    float   throttle_avg_max;           // throttle thrust average maximum value, 0.0 - 1.0
-    float   throttle_thrust_max;        // throttle thrust maximum value, 0.0 - 1.0
-    float   throttle_thrust_best_rpy;   // throttle providing maximum roll, pitch and yaw range without climbing
+    float   throttle_avg_max;           // 油门最大平均推力throttle thrust average maximum value, 0.0 - 1.0
+    float   throttle_thrust_max;        // 油门推力最大值throttle thrust maximum value, 0.0 - 1.0
+    float   throttle_thrust_best_rpy;   // 油门提供给欧拉角的最大值throttle providing maximum roll, pitch and yaw range without climbing
     float   rpy_scale = 1.0f;           // this is used to scale the roll, pitch and yaw to fit within the motor limits
     float   yaw_allowed = 1.0f;         // amount of yaw we can fit in
-    float   thr_adj;                    // the difference between the pilot's desired throttle and throttle_thrust_best_rpy
+    float   thr_adj;                    // 期望油门与best_rpy之差 the difference between the pilot's desired throttle and throttle_thrust_best_rpy
 
     // apply voltage and air pressure compensation
     const float compensation_gain = get_compensation_gain(); // compensation for battery voltage and altitude
@@ -870,6 +871,7 @@ void AP_MotorsMatrix::normalise_rpy_factors()
 void AP_MotorsMatrix::thrust_compensation(void)
 {
     if (_thrust_compensation_callback) {
+        //映射到void QuadPlane::tilt_compensate(float *thrust, uint8_t num_motors)这个函数
         _thrust_compensation_callback(_thrust_rpyt_out, AP_MOTORS_MAX_NUM_MOTORS);
     }
 }

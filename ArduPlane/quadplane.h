@@ -362,8 +362,8 @@ private:
 
     // true if we have reached the airspeed threshold for transition
     enum {
-        TRANSITION_AIRSPEED_WAIT,   //过渡空速等待、
-        TRANSITION_TIMER,           //过渡时间？计次？定时？
+        TRANSITION_AIRSPEED_WAIT,   //等待空速到达最小设定值9m/s
+        TRANSITION_TIMER,           //等待过渡模式（持续5s）
         TRANSITION_ANGLE_WAIT_FW,   //过渡角度等待。固定翼
         TRANSITION_ANGLE_WAIT_VTOL, //过渡角度等待，垂直起降
         TRANSITION_DONE             //倾转完成
@@ -373,6 +373,7 @@ private:
     bool throttle_wait:1;
 
     // true when quad is assisting a fixed wing mode
+    //四旋翼辅助飞行是否使用
     bool assisted_flight:1;
 
     // true when in angle assist
@@ -424,9 +425,9 @@ private:
     uint32_t last_qtun_log_ms;
 
     // types of tilt mechanisms
-    enum {TILT_TYPE_CONTINUOUS    =0,
-          TILT_TYPE_BINARY        =1,
-          TILT_TYPE_VECTORED_YAW  =2,
+    enum {TILT_TYPE_CONTINUOUS    =0,//连续倾转
+          TILT_TYPE_BINARY        =1,//二进制倾转
+          TILT_TYPE_VECTORED_YAW  =2,//
           TILT_TYPE_BICOPTER      =3
     };
 
@@ -435,10 +436,10 @@ private:
         AP_Int16 tilt_mask;
         AP_Int16 max_rate_up_dps;
         AP_Int16 max_rate_down_dps;
-        AP_Int8  max_angle_deg;
+        AP_Int8  max_angle_deg;//默认45,小于该角度为四旋翼模式，大于该角度为固定翼模式
         AP_Int8  tilt_type;
         AP_Float tilt_yaw_angle;
-        float current_tilt;
+        float current_tilt; //0-1对应0-90°
         float current_throttle;
         bool motors_active:1;
     } tilt;

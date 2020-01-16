@@ -682,6 +682,7 @@ void Plane::set_servos(void)
     // this is to allow the failsafe module to deliberately crash 
     // the plane. Only used in extreme circumstances to meet the
     // OBC rules
+    //自毁坠机
 #if ADVANCED_FAILSAFE == ENABLED
     if (afs.should_crash_vehicle()) {
         afs.terminate_vehicle();
@@ -692,7 +693,8 @@ void Plane::set_servos(void)
 #endif
 
     // do any transition updates for quadplane
-    quadplane.update();    
+    //更新quadplane的motors
+    quadplane.update();
 
     if (control_mode == &mode_auto && auto_state.idle_mode) {
         // special handling for balloon launch

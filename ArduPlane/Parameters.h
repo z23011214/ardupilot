@@ -371,6 +371,7 @@ public:
     AP_Float stab_pitch_down;
 
     // speed used for speed scaling
+    //默认15m/s，所有pid值均受其影响
     AP_Float scaling_speed;
 
     // navigation controller type. See AP_Navigation::ControllerType

@@ -359,7 +359,7 @@ const char *AP_Tuning::get_tuning_name(uint8_t parm)
  */
 void AP_Tuning::check_controller_error(void)
 {
-    float err = controller_error(current_parm);//control monitor，看过之后再回来看
+    float err = controller_error(current_parm);//control monitor，看过之后再回来看△
     if (err > error_threshold) {
         uint32_t now = AP_HAL::millis();
         if (now - last_controller_error_ms > 2000 && hal.util->get_soft_armed()) {

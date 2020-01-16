@@ -236,27 +236,35 @@ AP_MotorsMulticopter::AP_MotorsMulticopter(uint16_t loop_rate, uint16_t speed_hz
 void AP_MotorsMulticopter::output()
 {
     // update throttle filter
+    //油门低通滤波器
     update_throttle_filter();
 
     // calc filtered battery voltage and lift_max
+    //计算滤波后的电池电压 及 lift
     update_lift_max_from_batt_voltage();
 
     // run spool logic
-    output_logic();
+    output_logic();//看完了，但不怎么懂里面的计算的参数有什么用
 
     // calculate thrust
+    //稳定输出？
     output_armed_stabilizing();
 
+    //要倾转的旋翼推力求和然后平均
+    //不倾转的减小了一点。。。。？
     // apply any thrust compensation for the frame
     thrust_compensation();
 
     // convert rpy_thrust values to pwm
+    //转为pwm值
     output_to_motors();
 
     // output any booster throttle
+    //增强推力油门输出，应该没有吧
     output_boost_throttle();
 
     // output raw roll/pitch/yaw/thrust
+    //这几个输出也不知道有没有，是Aux_servo_function_t最后四个
     output_rpyt();
 };
 
@@ -287,6 +295,7 @@ void AP_MotorsMulticopter::output_min()
 }
 
 // update the throttle input filter
+//低通滤波
 void AP_MotorsMulticopter::update_throttle_filter()
 {
     if (armed()) {
@@ -304,21 +313,24 @@ void AP_MotorsMulticopter::update_throttle_filter()
 }
 
 // return current_limit as a number from 0 ~ 1 in the range throttle_min to throttle_max
+//返回当前的电流限制的最大油门值
 float AP_MotorsMulticopter::get_current_limit_max_throttle()
 {
     AP_BattMonitor &battery = AP::battery();
 
     float _batt_current;
 
-    if (_batt_current_max <= 0 || // return maximum if current limiting is disabled
-        !_flags.armed || // remove throttle limit if disarmed
-        !battery.current_amps(_batt_current, _batt_idx)) { // no current monitoring is available
+    if (_batt_current_max <= 0 || //未启用电流限制 return maximum if current limiting is disabled
+        !_flags.armed || //或未解锁 remove throttle limit if disarmed
+        !battery.current_amps(_batt_current, _batt_idx)) { //莫有获得电流值 no current monitoring is available
+        //直接返回最大值
         _throttle_limit = 1.0f;
         return 1.0f;
     }
 
+    //获得电阻
     float _batt_resistance = battery.get_resistance(_batt_idx);
-
+    //电阻为0？说明有问题，直接返回最大值
     if (is_zero(_batt_resistance)) {
         _throttle_limit = 1.0f;
         return 1.0f;
@@ -363,6 +375,7 @@ void AP_MotorsMulticopter::update_lift_max_from_batt_voltage()
 {
     // sanity check battery_voltage_min is not too small
     // if disabled or misconfigured exit immediately
+    //电池滤波
     float _batt_voltage_resting_estimate = AP::battery().voltage_resting_estimate(_batt_idx);
     if ((_batt_voltage_max <= 0) || (_batt_voltage_min >= _batt_voltage_max) || (_batt_voltage_resting_estimate < 0.25f * _batt_voltage_min)) {
         _batt_voltage_filt.reset(1.0f);
@@ -402,18 +415,20 @@ float AP_MotorsMulticopter::get_compensation_gain() const
 }
 
 // convert actuator output (0~1) range to pwm range
+//☆，电机输出为pwm
 int16_t AP_MotorsMulticopter::output_to_pwm(float actuator)
 {
     float pwm_output;
     if (_spool_state == SpoolState::SHUT_DOWN) {
         // in shutdown mode, use PWM 0 or minimum PWM
-        if (_disarm_disable_pwm && !armed()) {
+        if (_disarm_disable_pwm && !armed()) {//未解锁则不输出pwm
             pwm_output = 0;
         } else {
-            pwm_output = get_pwm_output_min();
+            pwm_output = get_pwm_output_min();//解锁了则输出最小pwm
         }
     } else {
         // in all other spool modes, covert to desired PWM
+        //其他模式下，按照参数值，线性转化为pwm_output
         pwm_output = get_pwm_output_min() + (get_pwm_output_max() - get_pwm_output_min()) * actuator;
     }
 
@@ -442,7 +457,7 @@ void AP_MotorsMulticopter::set_actuator_with_slew(float& actuator_output, float 
     float output_slew_limit_dn = 0.0f;
 
     // If MOT_SLEW_UP_TIME is set, calculate the highest allowed new output value, constrained 0.0~1.0
-    if (is_positive(_slew_up_time)) {
+    if (is_positive(_slew_up_time)) {//up down这两个默认都是0
         float output_delta_up_max = 1.0f / (constrain_float(_slew_up_time, 0.0f, 0.5f) * _loop_rate);
         output_slew_limit_up = constrain_float(actuator_output + output_delta_up_max, 0.0f, 1.0f);
     }
@@ -514,9 +529,12 @@ void AP_MotorsMulticopter::update_throttle_hover(float dt)
 }
 
 // run spool logic
+//电机操纵逻辑
 void AP_MotorsMulticopter::output_logic()
 {
+    //有一定时间的缓冲
     if (_flags.armed) {
+        //默认为0，(为1时，锁定时不输出pwm) safe_time=1默认
         if (_disarm_disable_pwm && (_disarm_safe_timer < _safe_time)) {
             _disarm_safe_timer += 1.0f/_loop_rate;
         } else {
@@ -527,16 +545,18 @@ void AP_MotorsMulticopter::output_logic()
     }
 
     // force desired and current spool mode if disarmed or not interlocked
+    //未解锁或不连锁时，强制shut_down
     if (!_flags.armed || !_flags.interlock) {
         _spool_desired = DesiredSpoolState::SHUT_DOWN;
         _spool_state = SpoolState::SHUT_DOWN;
     }
 
+    //限幅
     if (_spool_up_time < 0.05) {
         // prevent float exception
         _spool_up_time.set(0.05);
     }
-
+    //shut_down -> ground_idle -> spooling_up -> throttle_unlimited -> spooling_down -> ground_idle -> shut_down
     switch (_spool_state) {
     case SpoolState::SHUT_DOWN:
         // Motors should be stationary.
@@ -550,16 +570,20 @@ void AP_MotorsMulticopter::output_logic()
         limit.throttle_upper = true;
 
         // make sure the motors are spooling in the correct direction
+        //当前电机期望模式不为shun_down 且 时间已过 切换至预转模式,不管期望模式是什么，都会先到预转模式
         if (_spool_desired != DesiredSpoolState::SHUT_DOWN && _disarm_safe_timer >= _safe_time.get()) {
             _spool_state = SpoolState::GROUND_IDLE;
             break;
         }
+        //否则就初始化一些变量
 
         // set and increment ramp variables
+        //设置斜坡变量
         _spin_up_ratio = 0.0f;
         _throttle_thrust_max = 0.0f;
 
         // initialise motor failure variables
+        //初始化某些变量
         _thrust_boost = false;
         _thrust_boost_ratio = 0.0f;
         break;
@@ -576,9 +600,12 @@ void AP_MotorsMulticopter::output_logic()
         limit.throttle_upper = true;
 
         // set and increment ramp variables
+        //1/0.5/400=1/200=0.005
         float spool_step = 1.0f / (_spool_up_time * _loop_rate);
+        //此时，判断下一个切换状态
         switch (_spool_desired) {
         case DesiredSpoolState::SHUT_DOWN:
+            //_spin_up_ratio以spool_step(0.005)的步长衰减至0
             _spin_up_ratio -= spool_step;
             // constrain ramp value and update mode
             if (_spin_up_ratio <= 0.0f) {
@@ -588,8 +615,11 @@ void AP_MotorsMulticopter::output_logic()
             break;
 
         case DesiredSpoolState::THROTTLE_UNLIMITED:
-            _spin_up_ratio += spool_step;
-            // constrain ramp value and update mode
+            //_spin_up_ratio以spool_step(0.005)的步长增长至1
+            _spin_up_ratio += spool_step;          
+            // constrain ramp value and update 
+            //增长至1后，进入spooling_up模式
+            //期望记入unlimited模式，首先进入spooling_up
             if (_spin_up_ratio >= 1.0f) {
                 _spin_up_ratio = 1.0f;
                 _spool_state = SpoolState::SPOOLING_UP;
@@ -599,11 +629,14 @@ void AP_MotorsMulticopter::output_logic()
         case DesiredSpoolState::GROUND_IDLE:
             float spin_up_armed_ratio = 0.0f;
             if (_spin_min > 0.0f) {
-                spin_up_armed_ratio = _spin_arm / _spin_min;
+                spin_up_armed_ratio = _spin_arm / _spin_min;//是个常数，0.1/0.15=2/3=0.666
             }
+            //_spin_up_ratio以spool_step(0.005)的步长趋近spin_up_armed_ratio(0.666),达到0.665~0.670
             _spin_up_ratio += constrain_float(spin_up_armed_ratio - _spin_up_ratio, -spool_step, spool_step);
             break;
         }
+        
+         //疯狂初始化
         _throttle_thrust_max = 0.0f;
 
         // initialise motor failure variables
@@ -623,6 +656,7 @@ void AP_MotorsMulticopter::output_logic()
         limit.throttle_upper = false;
 
         // make sure the motors are spooling in the correct direction
+        //若不是unlimited，则spooling_down
         if (_spool_desired != DesiredSpoolState::THROTTLE_UNLIMITED) {
             _spool_state = SpoolState::SPOOLING_DOWN;
             break;
@@ -630,6 +664,7 @@ void AP_MotorsMulticopter::output_logic()
 
         // set and increment ramp variables
         _spin_up_ratio = 1.0f;
+        //_throttle_thrust_max也以0.005的步长增加
         _throttle_thrust_max += 1.0f / (_spool_up_time * _loop_rate);
 
         // constrain ramp value and update mode
@@ -657,6 +692,7 @@ void AP_MotorsMulticopter::output_logic()
         limit.throttle_upper = false;
 
         // make sure the motors are spooling in the correct direction
+        //期望状态检查
         if (_spool_desired != DesiredSpoolState::THROTTLE_UNLIMITED) {
             _spool_state = SpoolState::SPOOLING_DOWN;
             break;
@@ -666,9 +702,9 @@ void AP_MotorsMulticopter::output_logic()
         _spin_up_ratio = 1.0f;
         _throttle_thrust_max = get_current_limit_max_throttle();
 
-        if (_thrust_boost && !_thrust_balanced) {
+        if (_thrust_boost && !_thrust_balanced) {//启用boost且未平衡，则boost占比 递增到1
             _thrust_boost_ratio = MIN(1.0, _thrust_boost_ratio + 1.0f / (_spool_up_time * _loop_rate));
-        } else {
+        } else {//否则递减到0
             _thrust_boost_ratio = MAX(0.0, _thrust_boost_ratio - 1.0f / (_spool_up_time * _loop_rate));
         }
         break;
@@ -685,6 +721,7 @@ void AP_MotorsMulticopter::output_logic()
         limit.throttle_upper = false;
 
         // make sure the motors are spooling in the correct direction
+        //状态检查
         if (_spool_desired == DesiredSpoolState::THROTTLE_UNLIMITED) {
             _spool_state = SpoolState::SPOOLING_UP;
             break;
@@ -692,18 +729,19 @@ void AP_MotorsMulticopter::output_logic()
 
         // set and increment ramp variables
         _spin_up_ratio = 1.0f;
+        //递减
         _throttle_thrust_max -= 1.0f / (_spool_up_time * _loop_rate);
 
         // constrain ramp value and update mode
         if (_throttle_thrust_max <= 0.0f) {
             _throttle_thrust_max = 0.0f;
         }
-        if (_throttle_thrust_max >= get_current_limit_max_throttle()) {
+        if (_throttle_thrust_max >= get_current_limit_max_throttle()) {//减得快，若大于这个值，直接从这个值开始减
             _throttle_thrust_max = get_current_limit_max_throttle();
-        } else if (is_zero(_throttle_thrust_max)) {
+        } else if (is_zero(_throttle_thrust_max)) {//为0就转下一个模式
             _spool_state = SpoolState::GROUND_IDLE;
         }
-
+        //递减到0
         _thrust_boost_ratio = MAX(0.0, _thrust_boost_ratio - 1.0f / (_spool_up_time * _loop_rate));
         break;
     }

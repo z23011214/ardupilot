@@ -1042,32 +1042,33 @@ bool AP_AHRS_DCM::get_position(struct Location &loc) const
 bool AP_AHRS_DCM::airspeed_estimate(float *airspeed_ret) const
 {
     bool ret = false;
-    if (airspeed_sensor_enabled()) {
+    if (airspeed_sensor_enabled()) {//启用空速传感器，则直接使用其值
         *airspeed_ret = _airspeed->get_airspeed();
         return true;
     }
 
-    if (!_flags.wind_estimation) {
+    if (!_flags.wind_estimation) {//若没有风速估计，则返回false
         return false;
     }
 
-    // estimate it via GPS speed and wind
-    if (have_gps()) {
+    // estimate it via GPS speed and wind 
+    //通过风速及GPS进行估计
+    if (have_gps()) {//存在GPS且使用则使用_last_airspeed
         *airspeed_ret = _last_airspeed;
         ret = true;
     }
 
-    if (ret && _wind_max > 0 && AP::gps().status() >= AP_GPS::GPS_OK_FIX_2D) {
+    if (ret && _wind_max > 0 && AP::gps().status() >= AP_GPS::GPS_OK_FIX_2D) {//有且使用GPS  有风速  GPS状态优于2D锁定
         // constrain the airspeed by the ground speed
         // and AHRS_WIND_MAX
-        const float gnd_speed = AP::gps().ground_speed();
-        float true_airspeed = *airspeed_ret * get_EAS2TAS();
+        const float gnd_speed = AP::gps().ground_speed();//GPS地速
+        float true_airspeed = *airspeed_ret * get_EAS2TAS();//EAS转为TAS
         true_airspeed = constrain_float(true_airspeed,
                                         gnd_speed - _wind_max,
-                                        gnd_speed + _wind_max);
-        *airspeed_ret = true_airspeed / get_EAS2TAS();
+                                        gnd_speed + _wind_max);//限幅
+        *airspeed_ret = true_airspeed / get_EAS2TAS();//转回去
     }
-    if (!ret) {
+    if (!ret) {//若没有gps，则用上一次的值
         // give the last estimate, but return false. This is used by
         // dead-reckoning code
         *airspeed_ret = _last_airspeed;
