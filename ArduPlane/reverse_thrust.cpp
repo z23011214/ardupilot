@@ -107,6 +107,7 @@ bool Plane::have_reverse_thrust(void) const
 
 /*
   return control in from the radio throttle channel.
+  true为无死区，false有
  */
 int16_t Plane::get_throttle_input(bool no_deadzone) const
 {

@@ -433,7 +433,7 @@ void Plane::update_control_mode(void)
     // ensure we are fly-forward when we are flying as a pure fixed
     // wing aircraft. This helps the EKF produce better state
     // estimates as it can make stronger assumptions
-    //处于垂直起降或四旋翼模式时，ahrs前飞设置关闭
+    //处于垂直起降或辅助飞行模式时，ahrs前飞设置关闭
     //处于着陆模式时，取决于landing是否为前飞模式
     //其他状态ahrs均设置为前飞
     if (quadplane.in_vtol_mode() ||
@@ -445,7 +445,7 @@ void Plane::update_control_mode(void)
         ahrs.set_fly_forward(true);
     }
 
-    effective_mode->update();//不同模式下有不同的update，不想看了△
+    effective_mode->update();//将遥控器输入转化为target，不同模式下有不同的update，不想看了△
 }
 
 void Plane::update_navigation()

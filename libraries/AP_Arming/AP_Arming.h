@@ -44,9 +44,9 @@ public:
     };
 
     enum class Required {
-        NO           = 0,
-        YES_MIN_PWM  = 1,
-        YES_ZERO_PWM = 2
+        NO           = 0, //不需要输出pwm
+        YES_MIN_PWM  = 1, //需要输出0pwm，防止电调哔哔响
+        YES_ZERO_PWM = 2  //需要输出最小pwm，防止电调哔哔响
     };
 
     void init(void);

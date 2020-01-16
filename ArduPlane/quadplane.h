@@ -434,8 +434,8 @@ private:
     // tiltrotor control variables
     struct {
         AP_Int16 tilt_mask;
-        AP_Int16 max_rate_up_dps;
-        AP_Int16 max_rate_down_dps;
+        AP_Int16 max_rate_up_dps;//默认40，最大倾转角速率°/s
+        AP_Int16 max_rate_down_dps;//默认0，最小倾转角速率°/s
         AP_Int8  max_angle_deg;//默认45,小于该角度为四旋翼模式，大于该角度为固定翼模式
         AP_Int8  tilt_type;
         AP_Float tilt_yaw_angle;

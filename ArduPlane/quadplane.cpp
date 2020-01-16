@@ -827,6 +827,7 @@ void QuadPlane::multicopter_attitude_rate_update(float yaw_rate_cds)
 
     // tailsitter-only body-frame roll control options
     // Angle mode attitude control for pitch and body-frame roll, rate control for euler yaw.
+    //尾座式的。不看了
     if (is_tailsitter() &&
         (tailsitter.input_type & TAILSITTER_INPUT_BF_ROLL)) {
 
@@ -877,6 +878,7 @@ void QuadPlane::multicopter_attitude_rate_update(float yaw_rate_cds)
                                                                       yaw_rate_cds);
     } else {
         // use the fixed wing desired rates
+        //固定翼模式
         float roll_rate = plane.rollController.get_pid_info().target;
         float pitch_rate = plane.pitchController.get_pid_info().target;
         attitude_control->input_rate_bf_roll_pitch_yaw_2(roll_rate*100.0f, pitch_rate*100.0f, yaw_rate_cds);
@@ -951,6 +953,7 @@ void QuadPlane::run_z_controller(void)
 
   We relax them whenever we will be using them after a period of
   inactivity
+  一段时间未使用后，都行清空控制器
  */
 void QuadPlane::check_attitude_relax(void)
 {
@@ -1008,13 +1011,15 @@ void QuadPlane::check_yaw_reset(void)
 void QuadPlane::hold_hover(float target_climb_rate)
 {
     // motors use full range
+    //油门工作模式
     motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
     // initialize vertical speeds and acceleration
-    pos_control->set_max_speed_z(-pilot_velocity_z_max, pilot_velocity_z_max);
-    pos_control->set_max_accel_z(pilot_accel_z);
+    pos_control->set_max_speed_z(-pilot_velocity_z_max, pilot_velocity_z_max);//250cm/s
+    pos_control->set_max_accel_z(pilot_accel_z);//250cm/s/s
 
     // call attitude controller
+    //姿态控制
     multicopter_attitude_rate_update(get_desired_yaw_rate_cds());
 
     // call position controller
@@ -1540,7 +1545,7 @@ void QuadPlane::update_transition(void)
         // reset the failure timer if we haven't started transitioning
         transition_start_ms = now;
     } else if ((transition_state != TRANSITION_DONE) &&                         //倾转未完成
-        (transition_start_ms != 0) &&                                           //start_ms没有设置值
+        (transition_start_ms != 0) &&                                           //start_ms已设置值
         (transition_failure > 0) &&                                             //已设置转换失败的时限，默认为0(未设置)，本文件参数表中定义
         ((now - transition_start_ms) > ((uint32_t)transition_failure * 1000))) {//超过设定的失败时限
         gcs().send_text(MAV_SEVERITY_CRITICAL, "Transition failed, exceeded time limit");//报错
@@ -1639,7 +1644,7 @@ void QuadPlane::update_transition(void)
 
         transition_low_airspeed_ms = now; //记录速度较低的开始时间
         if (have_airspeed && aspeed > plane.aparm.airspeed_min && !assisted_flight) {//有空速，且大于最小值9，且无辅助飞行
-            transition_state = TRANSITION_TIMER;//等待中？,切换了模式
+            transition_state = TRANSITION_TIMER;//过渡等待模式,切换了模式
             gcs().send_text(MAV_SEVERITY_INFO, "Transition airspeed reached %.1f", (double)aspeed);
         }
         assisted_flight = true;//打开辅助模式，辅助加速？
@@ -1861,7 +1866,7 @@ void QuadPlane::update(void)
     }
 
     // disable throttle_wait when throttle rises above 10%
-    //油门上升至10％后，停止油门等待
+    //油门上升至10％后，禁用油门等待
     if (throttle_wait &&
         (plane.get_throttle_input() > 10 ||
          plane.failsafe.rc_failsafe ||
