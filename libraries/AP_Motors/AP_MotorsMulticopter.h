@@ -197,5 +197,5 @@ protected:
     thrust_compensation_fn_t _thrust_compensation_callback;
 
     // array of motor output values
-    float _actuator[AP_MOTORS_MAX_NUM_MOTORS];
+    float _actuator[AP_MOTORS_MAX_NUM_MOTORS];//各电机的输出值(比例)
 };

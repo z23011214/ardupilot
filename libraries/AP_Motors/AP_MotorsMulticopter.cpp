@@ -428,7 +428,7 @@ int16_t AP_MotorsMulticopter::output_to_pwm(float actuator)
         }
     } else {
         // in all other spool modes, covert to desired PWM
-        //其他模式下，按照参数值，线性转化为pwm_output
+        //其他模式下，按照pwm范围，线性转化为pwm_output
         pwm_output = get_pwm_output_min() + (get_pwm_output_max() - get_pwm_output_min()) * actuator;
     }
 
@@ -769,6 +769,7 @@ void AP_MotorsMulticopter::set_throttle_passthrough_for_esc_calibration(float th
 // output a thrust to all motors that match a given motor mask. This
 // is used to control tiltrotor motors in forward flight. Thrust is in
 // the range 0 to 1
+//mast：倾转的motor对应的标志位
 void AP_MotorsMulticopter::output_motor_mask(float thrust, uint8_t mask, float rudder_dt)
 {
     for (uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {

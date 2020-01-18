@@ -39,7 +39,7 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK(update_speed_height,    50,    200), //更新速度高度
     SCHED_TASK(update_control_mode,   400,    100), //更新控制模式
     SCHED_TASK(stabilize,             400,    100), //自稳
-    SCHED_TASK(set_servos,            400,    100), //电机设置
+    SCHED_TASK(set_servos,            400,    100), //电机设置，☆，许多内容都在这里面
     SCHED_TASK(update_throttle_hover, 100,     90), //更新油门 悬停
     SCHED_TASK(read_control_switch,     7,    100), //读取控制切换
     SCHED_TASK(update_GPS_50Hz,        50,    300), //GPS信号50hz
@@ -63,7 +63,7 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK_CLASS(Compass,          &plane.compass,              cal_update, 50, 50),    //罗盘校准更新
     SCHED_TASK(accel_cal_update,       10,    50),                                          //加速度计校准更新
 #if OPTFLOW == ENABLED
-    SCHED_TASK_CLASS(OpticalFlow, &plane.optflow, update,    50,    50),                    //光流更新
+    SCHED_TASK_CLASS(OpticalFlow, &plane.optflow, update,    50,    50),                    //光流更新13
 #endif
     SCHED_TASK(one_second_loop,         1,    400),      //一秒更新一次
     SCHED_TASK(check_long_failsafe,     3,    400),      //长故障检查
@@ -137,7 +137,7 @@ void Plane::loop()
 // update AHRS system
 void Plane::ahrs_update()
 {
-    //解锁相关
+    //更新解锁状态
     arming.update_soft_armed();
 
 #if HIL_SUPPORT
@@ -146,7 +146,7 @@ void Plane::ahrs_update()
         gcs().update_receive();
     }
 #endif
-    //更新ahrs
+    //更新ahrs，☆，姿态解算相关
     ahrs.update();
 
     //写入imu信息
@@ -172,11 +172,11 @@ void Plane::ahrs_update()
     steer_state.locked_course_err += ahrs.get_yaw_rate_earth() * G_Dt;//角度误差
     steer_state.locked_course_err = wrap_PI(steer_state.locked_course_err);//(-π,π)之内
 
-    //检查是否已从EKF进行偏航复位
+    //检查是否已从EKF进行偏航复位，没看，△
     // check if we have had a yaw reset from the EKF
     quadplane.check_yaw_reset();
 
-    //更新惯导
+    //更新惯导，可以看一下，看看传感器参数怎么给的，△
     // update inertial_nav for quadplane
     quadplane.inertial_nav.update();
 }
@@ -445,7 +445,7 @@ void Plane::update_control_mode(void)
         ahrs.set_fly_forward(true);
     }
 
-    effective_mode->update();//将遥控器输入转化为target，不同模式下有不同的update，不想看了△
+    effective_mode->update();//将遥控器输入转化为target，不同模式下有不同的update，不想看了△。看的话重点看fbwa和qstabilize
 }
 
 void Plane::update_navigation()

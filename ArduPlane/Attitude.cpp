@@ -421,7 +421,7 @@ void Plane::stabilize()
         if (g.stick_mixing == STICK_MIXING_FBW && control_mode != &mode_stabilize) {//遥控杆混控设置？
             stabilize_stick_mixing_fbw();//使用fbw方式操控
         }
-        //固定翼的自稳？
+        //几个固定翼下的增稳，☆
         stabilize_roll(speed_scaler);
         stabilize_pitch(speed_scaler);
         if (g.stick_mixing == STICK_MIXING_DIRECT || control_mode == &mode_stabilize) {

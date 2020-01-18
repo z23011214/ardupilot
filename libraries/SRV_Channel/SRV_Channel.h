@@ -83,7 +83,7 @@ public:
         k_motor6                = 38,
         k_motor7                = 39,
         k_motor8                = 40,
-        k_motor_tilt            = 41,            ///< tiltrotor motor tilt control
+        k_motor_tilt            = 41,            ///< 倾转舵机tiltrotor motor tilt control
         k_rcin1                 = 51,            ///< these are for pass-thru from arbitrary rc inputs
         k_rcin2                 = 52,
         k_rcin3                 = 53,
@@ -103,7 +103,7 @@ public:
         k_ignition              = 67,
         k_choke                 = 68,
         k_starter               = 69,
-        k_throttle              = 70,
+        k_throttle              = 70,            //这个参数用作倾转舵机？
         k_tracker_yaw           = 71,            ///< antennatracker yaw
         k_tracker_pitch         = 72,            ///< antennatracker pitch
         k_throttleLeft          = 73,

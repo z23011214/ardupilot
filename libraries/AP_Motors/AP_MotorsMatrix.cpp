@@ -31,6 +31,7 @@ void AP_MotorsMatrix::init(motor_frame_class frame_class, motor_frame_type frame
     _last_frame_type = frame_type;
 
     // setup the motors
+    //☆这个函数设置各电机对姿态控制的贡献，即解耦矩阵
     setup_motors(frame_class, frame_type);
 
     // enable fast channels or instant pwm
@@ -148,6 +149,7 @@ void AP_MotorsMatrix::output_armed_stabilizing()
 
     // apply voltage and air pressure compensation
     const float compensation_gain = get_compensation_gain(); // compensation for battery voltage and altitude
+    //ff =feed forward
     roll_thrust = (_roll_in + _roll_in_ff) * compensation_gain;
     pitch_thrust = (_pitch_in + _pitch_in_ff) * compensation_gain;
     yaw_thrust = (_yaw_in + _yaw_in_ff) * compensation_gain;

@@ -568,7 +568,7 @@ void QuadPlane::setup_default_channels(uint8_t num_motors)
 }
     
 
-bool QuadPlane::setup(void)//☆ 重点 setup
+bool QuadPlane::setup(void)
 {
     if (initialised) {
         return true;
@@ -2061,7 +2061,7 @@ void QuadPlane::control_run(void)
     case Mode::Number::QACRO:
         control_qacro();
         break;
-    case Mode::Number::QSTABILIZE:
+    case Mode::Number::QSTABILIZE://常用的是这个，☆
         control_stabilize();
         break;
     case Mode::Number::QHOVER:
