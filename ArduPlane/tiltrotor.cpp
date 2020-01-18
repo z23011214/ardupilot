@@ -73,12 +73,20 @@ void QuadPlane::tiltrotor_continuous_update(void)
         
         //获取当前舵机通道值，并限幅
         float new_throttle = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle)*0.01, 0, 1);
+<<<<<<< HEAD
         if (tilt.current_tilt < 1) {//未倾转至90°
+=======
+        if (tilt.current_tilt < 1) {//连续倾转，限制倾转速率
+>>>>>>> e6db18b48a7675d3e8d0af5af53ff1b235be2d58
             tilt.current_throttle = constrain_float(new_throttle,
                                                     tilt.current_throttle-max_change,
                                                     tilt.current_throttle+max_change);
         } else {
+<<<<<<< HEAD
             tilt.current_throttle = new_throttle;//否则，不变
+=======
+            tilt.current_throttle = new_throttle;//否则，不限制
+>>>>>>> e6db18b48a7675d3e8d0af5af53ff1b235be2d58
         }
         if (!hal.util->get_soft_armed()) {//未解锁，设为0
             tilt.current_throttle = 0;
@@ -131,7 +139,10 @@ void QuadPlane::tiltrotor_continuous_update(void)
         // Q_TILT_MAX. Anything above 50% throttle gets
         // Q_TILT_MAX. Below 50% throttle we decrease linearly. This
         // relies heavily on Q_VFWD_GAIN being set appropriately.
+<<<<<<< HEAD
         //Q_TILT_MAX(参数表里就叫TILT_MAX) 该参数设置wait speed时的最大倾转角 默认45° 
+=======
+>>>>>>> e6db18b48a7675d3e8d0af5af53ff1b235be2d58
         float settilt = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle) / 50.0f, 0, 1);//油门前50%线性变化，之后饱和
         tiltrotor_slew(settilt * tilt.max_angle_deg / 90.0f);//于是该值0~45°
     }
