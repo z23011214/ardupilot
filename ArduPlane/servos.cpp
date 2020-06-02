@@ -607,7 +607,7 @@ void Plane::set_landing_gear(void)
   apply vtail and elevon mixers
   the rewrites radio_out for the corresponding channels
  */
-void Plane::servo_output_mixers(void)
+void Plane::servo_output_mixers(void)//☆ 升降 副翼 混控
 {
     // mix elevons and vtail channels
     channel_function_mixer(SRV_Channel::k_aileron, SRV_Channel::k_elevator, SRV_Channel::k_elevon_left, SRV_Channel::k_elevon_right);
@@ -846,9 +846,9 @@ void Plane::servos_output(void)
     SRV_Channels::calc_pwm();
 
     // run vtail and elevon mixers
-    //混控
+    //混控，☆所以程序里代码将 常规控制方式及混控（升降副翼，V尾升降舵）都计算过了，我们仅需将输出通道SRV_Channel映射至需要的function即可
     servo_output_mixers();
-
+    
     // support MANUAL_RCMASK
     if (g2.manual_rc_mask.get() != 0 && control_mode == &mode_manual) {
         SRV_Channels::copy_radio_in_out_mask(uint16_t(g2.manual_rc_mask.get()));
